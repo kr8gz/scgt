@@ -1,4 +1,4 @@
-# SCGT Control characters overview
+# SCGT Syntax overview
 
 ## Legend
 
