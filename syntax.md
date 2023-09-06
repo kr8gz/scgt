@@ -53,6 +53,7 @@ TODO this entire section sucks
 * `B` equivalent to SPWN `?b`
 * `C` equivalent to SPWN `?c`
 * `D` equivalent to SPWN `?i`
+* `Eb` roughly equivalent to SPWN `on(touch(), b)` - see `vEb` entry below
 * `F` equivalent to SPWN `false`
 * `G` equivalent to SPWN `?g`
 * `I` / `J` / `K` for loop variables
@@ -73,7 +74,7 @@ TODO this entire section sucks
     * *TODO think of syntax for slice*
 * `;` - `v}v` dictionarize / (multi-)zip?
     * *TODO for like matrix stuff? idk look at more stuff*
-* `;` - `vEb` roughly equivalent to `on(v, b)`
+* `;` - `vEb` roughly equivalent to SPWN `on(v, b)`
     * *TODO find out how event system works and which conversions should happen*
 * `;` - `vIb` / `vJb` / `vKb` to start for loop with corresponding variable using helper function `_scgt_iter(v)`
 * `;` - `vLb` starts a while loop using helper function `_scgt_bool(v)`
