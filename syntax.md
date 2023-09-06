@@ -24,7 +24,6 @@
 
 ## Statements
 * `v!` calls a trigger function using helper function `_scgt_trg_fn(v)`
-    * *TODO how to syntax for multiple assignment `a = b = c`? since inline assignment is also `!`*
 * `;` - `i@d` declares a type `i` with the members in `d`
 
 ## Modifiers
