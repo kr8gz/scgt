@@ -80,7 +80,7 @@ Only in this order
 * `[ ] [$]` - `T` equivalent to SPWN `true`
 
 ## Postfixes
-* `[;] [ ]` - `i!v` assignes a value
+* `[;] [ ]` - `i!v` assigns a value
 * `[ ] [ ]` - `v?v` ( `v` )? for ternary operator
 * `[ ] [$]` - `v.i` for accessing children
 * `[;] [ ]` - `v(z` calls a macro
