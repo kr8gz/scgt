@@ -15,12 +15,13 @@
     * ( `s` )*
 * `d` - dictionary
     * `m` ( [ { ( `i` | `v` ) `:` }+ `v` | { `i` | `v` } `v` | `v` { `,` }? ] )*
-    * with single character modifier: `m` ( [ { `j` | `w` }+ `:v` | `w,` | `w` ] )*
+    * with single character modifier: `m` ( [ { `j` | `w` }+ `:v` | `w` { `,` }? ] )*
     * modifiers only apply to values, not keys
     * chain like `v:v:v` or `cc:v` to assign all keys in between to the value after the last `:`
     * `,` after a key to add it as a key-value pair (`v,` → `v: v`)
         * should also work with values because of `Od`
         * also works like this if the identifier is the last one in the dict
+        * also works like this for all keys with no value specified in for character key list
 * `i` - identifier
     * matches `[a-z]+`
     * identifiers may have one trailing space to separate them from the next one
