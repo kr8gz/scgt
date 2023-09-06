@@ -26,6 +26,9 @@ macro_rules! helper_functions {
 
 helper_functions! {
     PREFIX: "_scgt_",
+    Bool: "bool",
     ExplicitPrint: "explicit_print",
     Invert: "invert",
+    Iter: "iter",
+    Spawn: "spawn",
 }

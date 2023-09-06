@@ -80,7 +80,7 @@ Only in this order
 
 ## Postfixes
 * `[;] [$]` - `i!v` for inline assignment
-* `[ ] [ ]` - `v?vv` for ternary operator
+* `[ ] [ ]` - `v?v` ( `v` )? for ternary operator
 * `[ ] [$]` - `v.i` for accessing children
 * `[;] [ ]` - `v(z` calls a macro
     * `z`: `m` ( ( `i:` )? `v` )*

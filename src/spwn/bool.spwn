@@ -1,0 +1,9 @@
+v => match v.type {
+    in [@string, @array, @dictionary]: !v.is_empty(),
+    == @group: @string(v) != "?g",
+    == @color: @string(v) != "?i",
+    == @item:  @string(v) != "?c",
+    == @block: @string(v) != "?b",
+    == @NULL: false,
+    else: @bool(v)
+}

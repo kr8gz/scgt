@@ -1,4 +1,4 @@
-_scgt_explicit_print = (v) {
+v => {
     $.print(v)
     return v
 }

@@ -1,5 +1,6 @@
-_scgt_invert = (v) => match v.type {
+v => match v.type {
     == @number: -v,
     == @bool: !v,
     in [@string, @array]: v.reverse(),
+    else: v
 }

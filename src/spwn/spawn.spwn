@@ -1,0 +1,5 @@
+v => match v.type {
+    == @number: @group(v)!,
+    in [@group, @trigger_function]: v!
+    else: v
+}

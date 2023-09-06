@@ -101,7 +101,7 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
                 state.helper_functions
                     .iter()
                     .fold(code, |code, helper| {
-                        format!("{}\n{}", helper.spwn_impl(), code)
+                        format!("{} = {}\n{}", helper.spwn_name(), helper.spwn_impl(), code)
                     })
             )
         }
