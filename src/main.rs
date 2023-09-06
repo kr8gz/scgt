@@ -2,6 +2,7 @@ use std::{env, fs};
 
 mod error;
 mod parser;
+mod helper_functions;
 
 fn main() {
     let mut args = env::args();

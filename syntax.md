@@ -3,8 +3,11 @@
 ## Guide
 
 ### Closing characters
-* `"` - only strings
-* `;` - closing character for everything else
+* `["]` - only strings
+* `[;]` - closing character for everything else
+
+### Implicit printing at statement level
+* denoted by `[$]`
 
 ### Code placeholders
 * `b` - block
@@ -33,8 +36,8 @@
 * `z` - see notes for the entries that use this
 
 ## Statements
-* `v!` calls a trigger function using helper function `_scgt_trg_fn(v)`
-* `;` - `i@d` declares a type `i` with the members in `d`
+* `[ ] [ ]` - `v!` calls a trigger function using helper function `_scgt_trg_fn(v)`
+* `[;] [ ]` - `i@d` declares a type `i` with the members in `d`
 
 ## Modifiers
 Only in this order
@@ -46,53 +49,53 @@ Only in this order
 * `␣` optional end of modifier list indicator if following value could be a modifier too
 
 ## Values and prefixes
-* `!v` "inverts" using helper function `_scgt_inv(v)`
-* `@i` same as SPWN's type indicators
-* `$v` for explicit printing
+* `[ ] [$]` - `!v` "inverts" using helper function `_scgt_inv(v)`
+* `[ ] [$]` - `@i` same as SPWN's type indicators
+* `[ ] [ ]` - `$v` for explicit printing
     * returns the unmodified value
-* `'x` represents a string containing the following character only
-* `"` - `\…` starts a string starting with an escape char
-* `"` - `"…` starts a regular string
-* `;` - `)z;b` defines a macro
+* `[ ] [$]` - `'x` represents a string containing the following character only
+* `["] [$]` - \…` starts a string starting with an escape char
+* `["] [$]` - `"…` starts a regular string
+* `[;] [$]` - `)z;b` defines a macro
     * `z`: `m` ( `imv` [ `,` ]? )*
     * `,` needed to separate macro argument definitions because of possible default values
         * `␣` or no delimiter also works when unambiguous
-* `;` - `[l` defines array
-* `;` - `{d` defines dictionary
-* `;` - `}b` defines trigger function
-* `A` equivalent to SPWN `[]`
-* `B` equivalent to SPWN `?b`
-* `C` equivalent to SPWN `?c`
-* `D` equivalent to SPWN `?i`
-* `Eb` roughly equivalent to SPWN `on(touch(), b)` - see `vEb` entry [below](#postfixes)
-* `F` equivalent to SPWN `false`
-* `G` equivalent to SPWN `?g`
-* `I` / `J` / `K` for loop variables
-* `;` - `Lb` for infinite loop
-* `;` - `Mb` for macro def with no args
-* `N` equivalent to SPWN `null` / `()`
-* `;` - `Od` adds an object
-* `S` equivalent to SPWN `""`
-* `T` equivalent to SPWN `true`
+* `[;] [$]` - `[l` defines array
+* `[;] [$]` - `{d` defines dictionary
+* `[;] [$]` - `}b` defines trigger function
+* `[ ] [$]` - `A` equivalent to SPWN `[]`
+* `[ ] [$]` - `B` equivalent to SPWN `?b`
+* `[ ] [$]` - `C` equivalent to SPWN `?c`
+* `[ ] [$]` - `D` equivalent to SPWN `?i`
+* `[ ] [ ]` - `Eb` roughly equivalent to SPWN `on(touch(), b)` - see `vEb` entry [below](#postfixes)
+* `[ ] [$]` - `F` equivalent to SPWN `false`
+* `[ ] [$]` - `G` equivalent to SPWN `?g`
+* `[ ] [$]` - `I` / `J` / `K` for loop variables
+* `[;] [ ]` - `Lb` for infinite loop
+* `[;] [$]` - `Mb` for macro def with no args
+* `[ ] [$]` - `N` equivalent to SPWN `null` / `()`
+* `[;] [ ]` - `Od` adds an object
+* `[ ] [$]` - `S` equivalent to SPWN `""`
+* `[ ] [$]` - `T` equivalent to SPWN `true`
 
 ## Postfixes
-* `;` - `i!v` for inline assignment
-* `v?vv` for ternary operator
-* `v.i` for accessing children
-* `;` - `v(z` calls a macro
+* `[;] [$]` - `i!v` for inline assignment
+* `[ ] [ ]` - `v?vv` for ternary operator
+* `[ ] [$]` - `v.i` for accessing children
+* `[;] [ ]` - `v(z` calls a macro
     * `z`: `m` ( ( `i:` )? `v` )*
     * `i:v` when calling to specify the arg that gets the value
-* `;` - `v]z` for indexing/slicing
+* `[;] [$]` - `v]z` for indexing/slicing
     * *TODO think of syntax for slice*
-* `;` - `v}v` dictionarize / (multi-)zip?
+* `[;] [$]` - `v}v` dictionarize / (multi-)zip?
     * *TODO for like matrix stuff? idk look at more stuff*
-* `;` - `vEb` roughly equivalent to SPWN `on(v, b)`
+* `[;] [ ]` - `vEb` roughly equivalent to SPWN `on(v, b)`
     * *TODO find out how event system works and which conversions should happen*
-* `;` - `vIb` / `vJb` / `vKb` to start for loop with corresponding variable using helper function `_scgt_iter(v)`
-* `;` - `vLb` starts a while loop using helper function `_scgt_bool(v)`
+* `[;] [ ]` - `vIb` / `vJb` / `vKb` to start for loop with corresponding variable using helper function `_scgt_iter(v)`
+* `[;] [ ]` - `vLb` starts a while loop using helper function `_scgt_bool(v)`
 * `vM` for macro call with no args
-* `;` - `vWb` starts a runtime while loop
-* any type(s) (except consecutive duplicates) - converts to types in order
+* `[;] [ ]` - `vWb` starts a runtime while loop
+* `[ ] [$]` - any type(s) (except consecutive duplicates) - converts to types in order
     * see also [**Built-in types**](#built-in-types)
 
 ## Built-in types

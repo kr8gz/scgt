@@ -1,2 +1,13 @@
-let a = 3
-$.print(@group(@number(@string(a) + "2")))
+// SCGT: generated helper functions
+_scgt_explicit_print = (v) {
+    $.print(v)
+    return v
+}
+
+_scgt_invert = (v) => match v.type {
+    == @number: -v,
+    == @bool: !v,
+    in [@string, @array]: v.reverse(),
+}
+
+_scgt_explicit_print(_scgt_invert(_scgt_explicit_print(_scgt_invert(true))))
