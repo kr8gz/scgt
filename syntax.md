@@ -73,6 +73,8 @@ TODO this entire section sucks
     * *TODO think of syntax for slice*
 * `;` - `v}v` dictionarize / (multi-)zip?
     * *TODO for like matrix stuff? idk look at more stuff*
+* `;` - `vEb` roughly equivalent to `on(v, b)`
+    * *TODO find out how event system works and which conversions should happen*
 * `;` - `vIb` / `vJb` / `vKb` to start for loop with corresponding variable using helper function `_scgt_iter(v)`
 * `;` - `vLb` starts a while loop using helper function `_scgt_bool(v)`
 * `vM` for macro call with no args
