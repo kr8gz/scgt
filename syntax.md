@@ -29,8 +29,10 @@
     * `m` ( `v` )*
 * `m` - optional modifiers - see [**Modifiers**](#modifiers)
 * `s` - statement - see [**Statements**](#statements)
-* `v` - value/expression - see [**Values and Prefixes**](#values-and-prefixes) and [**Postfixes**](#postfixes)
-    * values may have one trailing space to separate them from the next one
+* `v` - expression
+    * expressions are just values chained with operators
+    * see [**Values and Prefixes**](#values-and-prefixes) and [**Postfixes**](#postfixes)
+    * expressions may have one trailing space to separate them from the next one
 * `w` - value limited to one character - see `v` above
 * `x` - any character
 * `…` - any sequence of characters (until closed accordingly)
