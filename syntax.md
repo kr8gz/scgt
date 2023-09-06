@@ -33,6 +33,7 @@
     * expressions are just values chained with operators
     * see [**Values and Prefixes**](#values-and-prefixes) and [**Postfixes**](#postfixes)
     * expressions may have one trailing space to separate them from the next one
+        * *TODO check_with_state to check if outermost expression idfk*
 * `w` - value limited to one character - see `v` above
 * `x` - any character
 * `…` - any sequence of characters (until closed accordingly)
