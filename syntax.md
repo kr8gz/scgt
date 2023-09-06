@@ -67,8 +67,7 @@ TODO this entire section sucks
 * `;` - `i!v` for inline assignment
 * `v?vv` for ternary operator
 * `v.i` for accessing children
-* `;` - `v)z` calls a macro
-    * *TODO deez notes*
+* `;` - `v)l` calls a macro
     * `i:v` when calling to specify the arg that gets the value
 * `;` - `v]z` for indexing/slicing
     * *TODO think of syntax for slice*
