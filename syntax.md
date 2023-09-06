@@ -1,6 +1,6 @@
 # SCGT Syntax overview
 
-## Legend
+## Guide
 
 ### Closing characters
 * `"` - only strings
@@ -8,30 +8,42 @@
 
 ### Code placeholders
 * `b` - block
+    * ( `s` )*
 * `d` - dictionary
-    * *TODO deez notes*
-    * chain `v:v` to assign all keys in between to the value after the last `:`
+    * `m` ( [ { ( `i` | `v` ) `:` }+ `v` | { `i` | `v` } `v` | `v` { `,` }? ] )*
+    * with single character modifier: `m` ( [ { `j` | `w` }+ `:v` | `w,` | `w` ] )*
+    * modifiers only apply to values, not keys
+    * chain like `v:v:v` or `cc:v` to assign all keys in between to the value after the last `:`
     * `,` after a key to add it as a key-value pair (`v,` → `v: v`)
         * should also work with values because of `Od`
         * also works like this if the identifier is the last one in the dict
 * `i` - identifier
+    * matches `[a-z]+`
+    * identifiers may have one trailing space to separate them from the next one
+* `j` - identifier limited to one character - see `i` above
 * `l` - list
-    * *TODO deez notes*
-* `s` - statement
-* `v` - value/expression
+    * `m` ( `v` )*
+* `m` - optional modifiers - see [**Modifiers**](#modifiers)
+* `s` - statement - see [**Statements**](#statements)
+* `v` - value/expression - see [**Values and Prefixes**](#values-and-prefixes) and [**Postfixes**](#postfixes)
+    * values may have one trailing space to separate them from the next one
+* `w` - value limited to one character - see `v` above
 * `x` - any character
 * `…` - any sequence of characters (until closed accordingly)
+* `z` - see notes for the entries that use this
 
 ## Statements
 * `v!` calls a trigger function using helper function `_scgt_trg_fn(v)`
 * `;` - `i@d` declares a type `i` with the members in `d`
 
 ## Modifiers
-TODO this entire section sucks
-* `:` single char list
+Only in this order
 * `$` debug printing
-* `0` any sequence of numbers to be added to the end of something
+* any sequence of digits `[0-9]+` to be added to the end of something
 * any type(s) (except consecutive duplicates) - see also [**Built-in types**](#built-in-types)
+    * defaults to `N` if a digit modifier is used
+* `:` single character list - limits any following identifiers and/or values to one character
+* `␣` optional end of modifier list indicator if following value could be a modifier too
 
 ## Values and prefixes
 * `!v` "inverts" using helper function `_scgt_inv(v)`
@@ -41,8 +53,8 @@ TODO this entire section sucks
 * `'x` represents a string containing the following character only
 * `"` - `\…` starts a string starting with an escape char
 * `"` - `"…` starts a regular string
-* `;` - `(l;b` defines a macro
-    * *TODO deez notes*
+* `;` - `)z;b` defines a macro
+    * `z`: `m` ( `imv` [ `,` ]? )*
     * `,` needed to separate macro argument definitions because of possible default values
         * `␣` or no delimiter also works when unambiguous
 * `;` - `[l` defines array
@@ -52,7 +64,7 @@ TODO this entire section sucks
 * `B` equivalent to SPWN `?b`
 * `C` equivalent to SPWN `?c`
 * `D` equivalent to SPWN `?i`
-* `Eb` roughly equivalent to SPWN `on(touch(), b)` - see `vEb` entry below
+* `Eb` roughly equivalent to SPWN `on(touch(), b)` - see `vEb` entry [below](#postfixes)
 * `F` equivalent to SPWN `false`
 * `G` equivalent to SPWN `?g`
 * `I` / `J` / `K` for loop variables
@@ -67,7 +79,8 @@ TODO this entire section sucks
 * `;` - `i!v` for inline assignment
 * `v?vv` for ternary operator
 * `v.i` for accessing children
-* `;` - `v)l` calls a macro
+* `;` - `v(z` calls a macro
+    * `z`: `m` ( ( `i:` )? `v` )*
     * `i:v` when calling to specify the arg that gets the value
 * `;` - `v]z` for indexing/slicing
     * *TODO think of syntax for slice*
