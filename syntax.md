@@ -76,6 +76,7 @@ TODO this entire section sucks
 * `;` - `vIb` / `vJb` / `vKb` to start for loop with corresponding variable using helper function `_scgt_iter(v)`
 * `;` - `vLb` starts a while loop using helper function `_scgt_bool(v)`
 * `vM` for macro call with no args
+* `;` - `vWb` starts a runtime while loop
 * any type(s) (except consecutive duplicates) - converts to types in order
     * see also [**Built-in types**](#built-in-types)
 
