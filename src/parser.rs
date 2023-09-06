@@ -72,6 +72,8 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
             }
             .map(str::to_string);
 
+            // TODO add space " " handling
+
             choice((
                 ident,
                 int, float,
@@ -80,8 +82,7 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
                 hardcoded,
             ))
         })
-            .padded_by(just(" ").repeated().or_not())
-            .labelled("value");
+        .labelled("value");
 
         // let expression = 
         // TODO how to handle implicit/explicit printing? state?
