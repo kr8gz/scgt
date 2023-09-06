@@ -1,4 +1,4 @@
-v => {
+(v) {
     $.print(v)
     return v
 }
