@@ -105,6 +105,3 @@ Only in this order
 * `O`: `@object` (automatically adds to the level)
 * `S`: `@string`
 * `T`: `@bool`
-
-## Misc
-* `␣` needed to separate values when greedy value parsing is unwanted
