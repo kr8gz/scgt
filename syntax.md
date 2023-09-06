@@ -82,6 +82,7 @@ Only in this order
 ## Postfixes
 * `[;] [ ]` - `i!v` assigns a value and returns it
 * `[ ] [ ]` - `v?v` ( `v` )? for ternary operator
+    * *TODO fix the else syntax, this wont work*
 * `[ ] [$]` - `v.i` for accessing children
 * `[;] [ ]` - `v(z` calls a macro
     * `z`: `m` ( ( `i:` )? `v` )*
