@@ -9,12 +9,18 @@
 ### Code placeholders
 * `b` - block
 * `d` - dictionary
+    * *TODO deez notes*
+    * chain `v:v` to assign all keys in between to the value after the last `:`
+    * `,` after a key to add it as a key-value pair (`v,` → `v: v`)
+        * should also work with values because of `Od`
+        * also works like this if the identifier is the last one in the dict
 * `i` - identifier
+* `l` - list
+    * *TODO deez notes*
 * `s` - statement
 * `v` - value/expression
 * `x` - any character
 * `…` - any sequence of characters (until closed accordingly)
-* `z` - special: see notes in the corresponding entries
 
 ## Statements
 * `v!` calls a trigger function using helper function `_scgt_trg_fn(v)`
@@ -36,16 +42,12 @@ TODO this entire section sucks
 * `'x` represents a string containing the following character only
 * `"` - `\…` starts a string starting with an escape char
 * `"` - `"…` starts a regular string
-* `;` - `(z;b` defines a macro
+* `;` - `(l;b` defines a macro
     * *TODO deez notes*
     * `,` needed to separate macro argument definitions because of possible default values
-        * `␣` also works when unambiguous
-* `;` - `[z` defines array
-    * *TODO deez notes*
-* `;` - `{z` defines dictionary
-    * *TODO deez notes*
-    * `,` after a key to add it as a variable (`x,` → `x: x`)
-        * also works like this if the identifier is the last one in the dict
+        * `␣` or no delimiter also works when unambiguous
+* `;` - `[l` defines array
+* `;` - `{d` defines dictionary
 * `;` - `}b` defines trigger function
 * `A` equivalent to SPWN `[]`
 * `B` equivalent to SPWN `?b`
@@ -57,6 +59,7 @@ TODO this entire section sucks
 * `;` - `Lb` for infinite loop
 * `;` - `Mb` for macro def with no args
 * `N` equivalent to SPWN `null` / `()`
+* `;` - `Od` adds an object
 * `S` equivalent to SPWN `""`
 * `T` equivalent to SPWN `true`
 
@@ -84,6 +87,7 @@ TODO this entire section sucks
 * `D`: `@item`
 * `G`: `@group`
 * `N`: `@number`
+* `O`: `@object` (automatically adds to the level)
 * `S`: `@string`
 * `T`: `@bool`
 
