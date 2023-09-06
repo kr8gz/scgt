@@ -32,7 +32,7 @@ TODO this entire section sucks
 * `:` single char list
 * `$` debug printing
 * `0` any sequence of numbers to be added to the end of something
-* any type(s) - see also [**Built-in types**](#built-in-types)
+* any type(s) (except consecutive duplicates) - see also [**Built-in types**](#built-in-types)
 
 ## Values and prefixes
 * `!v` "inverts" using helper function `_scgt_inv(v)`
@@ -76,7 +76,7 @@ TODO this entire section sucks
 * `;` - `vIb` / `vJb` / `vKb` to start for loop with corresponding variable using helper function `_scgt_iter(v)`
 * `;` - `vLb` starts a while loop using helper function `_scgt_bool(v)`
 * `vM` for macro call with no args
-* any type(s) - converts to types in order
+* any type(s) (except consecutive duplicates) - converts to types in order
     * see also [**Built-in types**](#built-in-types)
 
 ## Built-in types
