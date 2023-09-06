@@ -1,4 +1,4 @@
-v => match v.type {
+(v) => match v.type {
     == @number & > 0: 0..v,
     == @number: v..0,
     == @group: @array(1..v+1).map(n => @group(n)),
