@@ -1,4 +1,4 @@
-v => match v.type {
+(v) => match v.type {
     in [@string, @array, @dictionary]: !v.is_empty(),
     == @group: @string(v) != "?g",
     == @color: @string(v) != "?i",
