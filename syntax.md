@@ -5,6 +5,7 @@
 ### Closing characters
 * `["]` - only strings
 * `[;]` - closing character for everything else
+* a newline closes **everything**
 
 ### Implicit printing at statement level
 * denoted by `[$]`
@@ -79,7 +80,7 @@ Only in this order
 * `[ ] [$]` - `T` equivalent to SPWN `true`
 
 ## Postfixes
-* `[;] [$]` - `i!v` for inline assignment
+* `[;] [ ]` - `i!v` assignes a value
 * `[ ] [ ]` - `v?v` ( `v` )? for ternary operator
 * `[ ] [$]` - `v.i` for accessing children
 * `[;] [ ]` - `v(z` calls a macro
@@ -97,6 +98,9 @@ Only in this order
 * `[;] [ ]` - `vWb` starts a runtime while loop
 * `[ ] [$]` - any type(s) (except consecutive duplicates) - converts to types in order
     * see also [**Built-in types**](#built-in-types)
+* operators
+    * `v` ( op `v` )*
+    * *TODO what is replacement for parantheses?*
 
 ## Built-in types
 * `A`: `@array`
