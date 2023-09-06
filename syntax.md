@@ -37,8 +37,8 @@
 * `z` - see notes for the entries that use this
 
 ## Statements
-* `[ ] [ ]` - `v!` calls a trigger function using helper function `_scgt_trg_fn(v)`
-* `[;] [ ]` - `i@d` declares a type `i` with the members in `d`
+* `v!` calls a trigger function using helper function `_scgt_trg_fn(v)`
+* `i@d` declares a type `i` with the members in `d`
 
 ## Modifiers
 Only in this order
