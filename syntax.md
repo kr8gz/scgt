@@ -41,6 +41,7 @@
 ## Statements
 * `v!` calls a trigger function using helper function `_scgt_trg_fn(v)`
 * `i@d` declares a type `i` with the members in `d`
+* expression (`v`)
 
 ## Modifiers
 Only in this order
