@@ -65,7 +65,8 @@ Only in this order
     * returns the unmodified value
 * ``[ ] [$]`` - ``'x`` represents a string containing the following character only
 * ``[`] [$]`` - `` `…`` starts a regular string
-* ``[`] [$]`` - ``\…`` starts a string starting with an escape char
+* ``[`] [$]`` - ``\…`` starts a string that may contain newlines
+    * this means that it *must* be closed before anything else
 * ``[;] [$]`` - ``(v`` groups an expression into one value
 * ``[;] [$]`` - ``)z;b`` defines a macro
     * ``z``: ``m`` ( ``imv`` [ ``,`` ]? )*

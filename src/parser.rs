@@ -56,6 +56,12 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
                 .or(just('_').ignore_then(text::ident()).map(String::from))
                 .labelled("identifier");
 
+            let closing = choice((
+                just(';').ignored(),
+                text::newline().rewind(),
+                end()
+            ));
+
             let expression = recursive(|expression| {
                 let int = text::int(10).map(String::from);
 
@@ -71,8 +77,17 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
 
                 let string_char = choice((
                     just('\\')
-                        .ignore_then(one_of("nrt`\\").or_not())
-                        .map(|c| format!("\\{}", c.unwrap_or('\\'))),
+                        .ignore_then(
+                            select! {
+                                'n' => "\\n",
+                                'r' => "\\r",
+                                't' => "\\t",
+                                '`' => "`",
+                                '\\' => "\\\\",
+                            }
+                            .or_not()
+                        )
+                        .map(|c| c.unwrap_or("\\").to_string()),
 
                     any()
                         .and_is(just('`').ignored().or(text::newline()).not())
@@ -84,7 +99,14 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
                     string_char
                         .repeated()
                         .collect::<Vec<_>>()
-                        .delimited_by(just('`'), just('`').or_not()),
+                        .delimited_by(
+                            just('`'),
+                            choice((
+                                just('`').ignored(),
+                                text::newline().rewind(),
+                                end()
+                            ))
+                        ),
                     // \...` (allows newlines)
                     string_char.or(text::newline().to("\n".to_string()))
                         .repeated()
@@ -106,6 +128,14 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
                     .ignore_then(ident)
                     .map(|name| format!("@{name}"));
 
+                let inner = block.clone()
+                    .delimited_by(just('('), closing)
+                    .map(|v| {
+                        // TODO block helper function or something idk that returns last statement (when indent_level > 0?)
+                        // Context for this instead of State?
+                        format!("({v})")
+                    });
+
                 let hardcoded = select! {
                     'A' => "[]",
                     'B' => "?b",
@@ -123,6 +153,7 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
                     int, float,
                     char_literal, string,
                     value_ident, type_indicator,
+                    inner,
                     hardcoded,
                 ))
                 .map(|v| Value(v, PrintBehavior::Implicit));
@@ -165,7 +196,12 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
             ))
             .map_with_state(|s, span: SimpleSpan, state: &mut State| {
                 let indent = " ".repeat(4 * state.indent_level);
-                format!("{indent}// {}\n{indent}{s}", &state.source[span.start..span.end])
+                let comment = state.source[span.start..span.end]
+                    .lines()
+                    .map(|line| format!("{indent}// {line}\n"))
+                    .collect::<String>();
+                
+                format!("{comment}{indent}{s}")
             });
 
             statement
