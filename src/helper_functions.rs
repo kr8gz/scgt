@@ -3,7 +3,7 @@ macro_rules! helper_functions {
         PREFIX: $prefix:literal,
         $( $name:ident: $spwn_name:literal, )*
     ) => {
-        #[derive(PartialEq, Eq, Hash, Clone, Copy)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
         pub enum HelperFunction {
             $( $name ),*
         }
@@ -28,7 +28,9 @@ helper_functions! {
     PREFIX: "_scgt_",
     Bool: "bool",
     ExplicitPrint: "explicit_print",
+    Get: "get",
     Invert: "invert",
     Iter: "iter",
+    Set: "set",
     Spawn: "spawn",
 }

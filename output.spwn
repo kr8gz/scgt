@@ -1,40 +1,21 @@
 // Automatically generated SCGT helper functions
-_scgt_invert = v => match v.type {
+_scgt_explicit_print = (v) {
+    $.print(v)
+    return v
+}
+
+_scgt_get = (v) => v // to counteract the clone bug in spwn 0.8
+
+_scgt_invert = (v) => match v.type {
     == @number: -v,
     == @bool: !v,
     in [@string, @array]: v.reverse(),
     else: v
 }
 
-_scgt_bool = v => match v.type {
-    in [@string, @array, @dictionary]: !v.is_empty(),
-    == @group: @string(v) != "?g",
-    == @color: @string(v) != "?i",
-    == @item:  @string(v) != "?c",
-    == @block: @string(v) != "?b",
-    == @NULL: false,
-    else: @bool(v)
-}
+// SCGT: gaga
+$.print(_scgt_get(gaga))
 
-_scgt_spawn = v => match v.type {
-    == @number: @group(v)!,
-    in [@group, @trigger_function]: v!
-    else: v
-}
+// SCGT: $!ga
+_scgt_explicit_print(_scgt_invert(_scgt_get(ga)))
 
-_scgt_iter = v => match v.type {
-    == @number & > 0: 0..v,
-    == @number: v..0,
-    == @group: @array(1..v+1).map(n => @group(n)),
-    == @color: @array(1..v+1).map(n => @color(n)),
-    == @item:  @array(1..v+1).map(n => @item(n)),
-    == @block: @array(1..v+1).map(n => @block(n)),
-    else: v
-}
-
-_scgt_explicit_print = v => {
-    $.print(v)
-    return v
-}
-
-_scgt_explicit_print(_scgt_invert(_scgt_explicit_print(_scgt_invert(true))))

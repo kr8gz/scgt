@@ -18,8 +18,9 @@
     * with single character modifier: `m` ( [ { `j` | `w` }+ `:v` | `w` { `,` }? ] )*
     * modifiers only apply to values, not keys
     * chain like `v:v:v` or `cc:v` to assign all keys in between to the value after the last `:`
+    * only idents in dictionaries and only numbers in objects (no value keys)
     * `,` after a key to add it as a key-value pair (`v,` → `v: v`)
-        * should also work with values because of `Od`
+        * should also work with values in `Od`
         * also works like this if the identifier is the last one in the dict
         * also works like this for all keys with no value specified in for character key list
 * `i` - identifier
@@ -42,7 +43,6 @@
 
 ## Statements
 * `[ ] [ ]` - `v!` calls a trigger function using helper function `_scgt_trg_fn(v)`
-* `[ ] [ ]` - `i@d` declares a type `i` with the members in `d`
 * `[ ] [$]` - expression (at least one binary operator)
 * `[ ] [?]` - value
     * print behavior depends on the value
@@ -63,8 +63,9 @@ Only in this order
 * `[ ] [ ]` - `$v` for explicit printing
     * returns the unmodified value
 * `[ ] [$]` - `'x` represents a string containing the following character only
-* `["] [$]` - \…` starts a string starting with an escape char
+* `["] [$]` - `\…` starts a string starting with an escape char
 * `["] [$]` - `"…` starts a regular string
+* `[;] [$]` - `(v` groups an expression into one value
 * `[;] [$]` - `)z;b` defines a macro
     * `z`: `m` ( `imv` [ `,` ]? )*
     * `,` needed to separate macro argument definitions because of possible default values
@@ -89,6 +90,7 @@ Only in this order
 
 ## Postfixes
 * `[;] [ ]` - `i!v` assigns a value and returns it
+* `[;] [ ]` - `i@d` declares a type `@i` with the members in `d`
 * `[ ] [ ]` - `v?v` ( `v` )? for ternary operator
     * *TODO fix the else syntax, this wont work*
 * `[ ] [$]` - `v.i` for accessing children
@@ -109,7 +111,6 @@ Only in this order
     * see also [**Built-in types**](#built-in-types)
 * operators
     * `v` ( op `v` )*
-    * *TODO what is replacement for parantheses?*
 
 ## Built-in types
 * `A`: `@array`
