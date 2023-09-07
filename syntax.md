@@ -67,7 +67,7 @@ Only in this order
 * ``[`] [$]`` - `` `…`` starts a regular string
 * ``[`] [$]`` - ``\…`` starts a string that may contain newlines
     * this means that it *must* be closed before anything else
-* ``[;] [$]`` - ``(v`` groups an expression into one value
+* ``[;] [$]`` - ``(b`` evaluates a block as a value
 * ``[;] [$]`` - ``)z;b`` defines a macro
     * ``z``: ``m`` ( ``imv`` [ ``,`` ]? )*
     * ``,`` needed to separate macro argument definitions because of possible default values
