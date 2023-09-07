@@ -95,6 +95,8 @@ Only in this order
 * ``[;] [ ]`` - ``i@d`` declares a type ``@i`` with the members in ``d``
 * ``[ ] [ ]`` - ``v?v`` ( ``v`` )? for ternary operator
     * *TODO fix the else syntax, this wont work*
+    * *TODO `v$?vv` to print either?*
+    * *TODO `v? v` for no else?*
 * ``[ ] [$]`` - ``v.i`` for accessing children
 * ``[;] [ ]`` - ``v(z`` calls a macro
     * ``z``: ``m`` ( ( ``i:`` )? ``v`` )*
