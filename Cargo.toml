@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 chumsky = { version = "1.0.0-alpha.4", features = ["label"] }
 ariadne = "0.3.0"
+open = "5.0.0"
