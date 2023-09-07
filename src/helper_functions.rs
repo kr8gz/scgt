@@ -31,6 +31,7 @@ helper_functions! {
     Get: "get",
     Invert: "invert",
     Iter: "iter",
+    Mod: "mod",
     Set: "set",
     Spawn: "spawn",
 }

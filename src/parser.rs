@@ -9,6 +9,7 @@ type Extra<'a> = extra::Full<Err<'a>, State<'a>, ()>;
 
 struct State<'a> {
     helper_functions: BTreeSet<HelperFunction>,
+    variables: BTreeSet<String>,
     source: &'a str,
     indent_level: usize,
 }
@@ -17,6 +18,7 @@ impl<'a> State<'a> {
     fn new(source: &'a str) -> Self {
         Self {
             helper_functions: BTreeSet::new(),
+            variables: BTreeSet::new(),
             source,
             indent_level: 0,
         }
@@ -48,10 +50,18 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
             .labelled("identifier");
 
         let expression = recursive(|expression| {
-            let ident = ident.map_with_state(|v, _, state: &mut State| {
+            let value_ident = ident.map_with_state(|v, _, state: &mut State| {
                 let helper = state.add_helper(HelperFunction::Get);
-                format!("{helper}({v})")
+                let code = format!("{helper}({v})");
+
+                state.variables.insert(v);
+
+                code
             });
+
+            let type_indicator = just("@")
+                .ignore_then(ident)
+                .map(|name| format!("@{name}"));
 
             let int = text::int(10).map(str::to_string);
 
@@ -91,7 +101,8 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
             // TODO add space " " handling
 
             let implicit_print_values = choice((
-                ident,
+                value_ident,
+                type_indicator,
                 int, float,
                 hardcoded,
             ))
@@ -128,18 +139,29 @@ fn parser<'a>() -> impl Parser<'a, &'a str, String, Extra<'a>> + Clone {
             .collect::<Vec<_>>()
             .map(|v| v.join("\n\n"))
     })
-    .map_with_state(|code, _, state: &mut State| {
-        if state.helper_functions.is_empty() {
-            code
-        } else {
-            format!("{}\n{}",
+    .map_with_state(|mut code, _, state: &mut State| {
+        if !state.variables.is_empty() {
+            code = format!("{}\n{}{code}",
+                "// Used variables",
+                state.variables
+                    .iter()
+                    .rfold(String::from("\n"), |rest, var| {
+                        format!("let {var} = null\n{rest}")
+                    })
+            );
+        }
+
+        if !state.helper_functions.is_empty() {
+            code = format!("{}\n{}{code}",
                 "// Automatically generated SCGT helper functions",
                 state.helper_functions
-                    .iter().rev() // alphabetically sorted
-                    .fold(code, |code, helper| {
-                        format!("{} = {}\n{}", helper.spwn_name(), helper.spwn_impl(), code)
+                    .iter()
+                    .rfold(String::from("\n"), |rest, helper| {
+                        format!("{} = {}\n\n{rest}", helper.spwn_name(), helper.spwn_impl())
                     })
-            )
+            );
         }
+
+        code
     })
 }
