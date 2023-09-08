@@ -99,7 +99,7 @@ fn parser<'a>() -> parser_type!(String) {
                         }
                         .or_not()
                     )
-                    .map(|c| c.unwrap_or("\\").to_string()),
+                    .map(|s| s.unwrap_or("\\").to_string()),
 
                 any()
                     .and_is(just('`').ignored().or(text::newline()).not())
