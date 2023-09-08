@@ -1,6 +1,30 @@
-// (TT;
-$.print((// T
-$.print(true)
+// Automatically generated SCGT helper functions
+_scgt_invert = (v) => match v.type {
+    == @number: -v,
+    == @bool: !v,
+    in [@string, @array]: v.reverse(),
+    else: v
+}
 
-// T
-$.print(true)))
+_scgt_last = (b: @array) => null if b.is_empty() else b[-1]
+
+_scgt_print = (v) {
+    $.print(v)
+    return v
+}
+
+// (T(!F($T
+_scgt_print(_scgt_last([
+    // T
+    _scgt_print(true),
+    // (!F($T
+    _scgt_last([
+        // !F
+        _scgt_print(_scgt_invert(false)),
+        // ($T
+        _scgt_last([
+            // $T
+            _scgt_print(true)    
+        ])    
+    ])    
+]))
