@@ -140,7 +140,7 @@ fn parser<'a>() -> parser_type!(String) {
                 .ignore_then(ident)
                 .map(|name| format!("@{name}"));
 
-            let inner = finish_block(block.clone(), true, ",\n", true)
+            let inner_block = finish_block(block.clone(), true, ",\n", true)
                 .delimited_by(just('('), closing)
                 .map_with_state(|s, _, state: &mut State| {
                     let helper = state.add_helper(HelperFunction::Last);
@@ -171,7 +171,7 @@ fn parser<'a>() -> parser_type!(String) {
                 int, float,
                 char_literal, string,
                 value_ident, type_indicator,
-                inner,
+                inner_block,
                 invert,
                 hardcoded,
             ))
@@ -184,8 +184,14 @@ fn parser<'a>() -> parser_type!(String) {
                     format!("{helper}({code})")
                 });
 
+            // TODO this return_last should be true if it is still accessible from statement level
+            let infinite_loop = finish_block(block.clone(), false, "\n", true)
+                .delimited_by(just('L'), closing)
+                .map(|s| format!("while true {{{s}}}"));
+
             let explicit_print_values = choice((
                 explicit_print,
+                infinite_loop,
             ))
             .map_with_span(SpwnCode::explicit_print);
 
@@ -256,7 +262,7 @@ fn finish_block<'a>(
             let last_index = v.len() - 1;
             let indent = if format { "    " } else { "" };
     
-            let mut code = v.into_iter().enumerate().map(|(i, SpwnCode { mut code, span, print })| {
+            let code = v.into_iter().enumerate().map(|(i, SpwnCode { mut code, span, print })| {
                 let comment = state.source[span.start..span.end]
                     .lines()
                     .map(|line| format!("{indent}// {line}\n"))
@@ -286,10 +292,10 @@ fn finish_block<'a>(
             .join(delimiter);
 
             if format {
-                code = format!("\n{code}{indent}\n");
+                format!("\n{code}\n")
+            } else {
+                code
             }
-
-            code
         }
     })
 }
