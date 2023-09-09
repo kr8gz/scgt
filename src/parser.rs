@@ -355,7 +355,7 @@ fn format_loop(start: &str, loop_type: &str, stmts: Vec<SpwnCode>, state: &mut S
         );
 
         code = wrap_with_block(format!(
-            "let {arr_name} = []\n{start} {{\n{code}\n}}\nreturn a"
+            "let {arr_name} = []\n{start} {{\n{code}\n}}\nreturn {arr_name}"
         ));
         
         state.variables.insert(arr_name);
