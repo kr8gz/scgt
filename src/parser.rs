@@ -73,7 +73,13 @@ fn parser<'a>() -> parser_type!('a, String) {
         let ident = one_of("abcdefghijklmnopqrstuvwxyz")
             .repeated().at_least(1)
             .collect::<String>()
-            .or(just('_').ignore_then(text::ident()).map(String::from))
+            .or(
+                just('_')
+                    .ignore_then(text::ident())
+                    // .filter(|name: &&str| !name.starts_with("_scgt_"))
+                    // could also validate with warning or something
+                    .map(String::from)
+            )
             .labelled("identifier");
 
         let closing = choice((
