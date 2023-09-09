@@ -1,56 +1,11 @@
-// Initialize variables used
-let _scgt_while_2 = null
-let _scgt_while_3 = null
-let _scgt_while_7 = null
-let _scgt_while_8 = null
-let _scgt_while_9 = null
+// Automatically generated SCGT helper functions
+_scgt_print = (v) {
+    $.print(v)
+    return v
+}
 
-// (LL(((LLL1
-$.print(() {
-    // LL(((LLL1
-    return () {
-        let _scgt_while_2 = []
-        while true {
-            // L(((LLL1
-            _scgt_while_2.push(() {
-                let _scgt_while_3 = []
-                while true {
-                    // (((LLL1
-                    _scgt_while_3.push(() {
-                        // ((LLL1
-                        return () {
-                            // (LLL1
-                            return () {
-                                // LLL1
-                                return () {
-                                    let _scgt_while_7 = []
-                                    while true {
-                                        // LL1
-                                        _scgt_while_7.push(() {
-                                            let _scgt_while_8 = []
-                                            while true {
-                                                // L1
-                                                _scgt_while_8.push(() {
-                                                    let _scgt_while_9 = []
-                                                    while true {
-                                                        // 1
-                                                        _scgt_while_9.push(1)
-                                                    }
-                                                    return _scgt_while_9
-                                                } ())
-                                            }
-                                            return _scgt_while_8
-                                        } ())
-                                    }
-                                    return _scgt_while_7
-                                } ()
-                            } ()
-                        } ()
-                    } ())
-                }
-                return _scgt_while_3
-            } ())
-        }
-        return _scgt_while_2
-    } ()
-} ())
+// $$(3
+$.print(_scgt_print(() {
+    // 3
+    return 3
+} ()))

@@ -198,10 +198,14 @@ fn parser<'a>() -> parser_type!('a, String) {
             .map_with_span(SpwnCode::implicit_print);
 
             let explicit_print = just('$')
-                .ignore_then(expression.clone())
+                .ignore_then(set_stmt(expression.clone(), Some(false)))
                 .map_with_state(|SpwnCode { code, .. }, _, state: &mut State| {
-                    let helper = state.add_helper(HelperFunction::Print);
-                    format!("{helper}({code})")
+                    if state.is_stmt() {
+                        format!("$.print({code})")
+                    } else {
+                        let helper = state.add_helper(HelperFunction::Print);
+                        format!("{helper}({code})")
+                    }
                 });
 
             let infinite_loop = block.clone()
@@ -211,7 +215,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                 });
 
             let explicit_print_values = choice((
-                set_stmt(explicit_print, Some(false)),
+                explicit_print, // set_stmt is called at definition
                 set_stmt(infinite_loop, None),
             ))
             .map_with_span(SpwnCode::explicit_print);
@@ -273,7 +277,7 @@ fn parser<'a>() -> parser_type!('a, String) {
     ))
 }
 
-fn set_stmt<'a>(parser: parser_type!('a, String), is_stmt: Option<bool>) -> parser_type!('a, String) {
+fn set_stmt<'a, T>(parser: parser_type!('a, T), is_stmt: Option<bool>) -> parser_type!('a, T) {
     empty()
         .map_with_state(move |_, _, state: &mut State| {
             state.levels.push(is_stmt)
