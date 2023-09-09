@@ -1,19 +1,18 @@
-// Automatically generated SCGT helper functions
-_scgt_print = (v) {
-    $.print(v)
-    return v
-}
+// Initialize variables used
+let _scgt_while_1 = null
 
 // L(L1
 while true {
     // (L1
-    _scgt_print(() {
+    $.print(() {
         // L1
         return () {
+            let _scgt_while_1 = []
             while true {
                 // 1
-                return 1
+                _scgt_while_1.push(1)
             }
+            return a
         } ()
     } ())
 }

@@ -138,9 +138,7 @@ fn parser<'a>() -> parser_type!('a, String) {
             let value_ident = ident.map_with_state(|name, _, state: &mut State| {
                 let helper = state.add_helper(HelperFunction::Get);
                 let code = format!("{helper}({name})");
-
                 state.variables.insert(name);
-
                 code
             });
 
@@ -151,7 +149,7 @@ fn parser<'a>() -> parser_type!('a, String) {
             let inner_block = block.clone()
                 .delimited_by(just('('), closing)
                 .map_with_state(|stmts, _, state: &mut State| {
-                    let code = format_stmts(stmts, state, false);
+                    let code = format_stmts(stmts, state, false, "return #");
                     format!("() {{\n{code}\n}} ()")
                 });
 
@@ -197,13 +195,23 @@ fn parser<'a>() -> parser_type!('a, String) {
             let infinite_loop = block.clone()
                 .delimited_by(just('L'), closing)
                 .map_with_state(|stmts, _, state| {
-                    let mut code = format_stmts(stmts, state, false);
-                    code = format!("while true {{\n{code}\n}}");
-                    if !state.is_stmt() {
-                        code = wrap_with_block(code);
+                    if state.is_stmt() {
+                        let code = format_stmts(stmts, state, false, "");
+                        format!("while true {{\n{code}\n}}")
+                    } else {
+                        let arr_name = format!("_scgt_while_{}", state.stmt_levels.len());
+                        let mut code = format_stmts(
+                            stmts, state, false,
+                            &format!("{arr_name}.push(#)")
+                        );
+
+                        code = wrap_with_block(format!(
+                            "let {arr_name} = []\nwhile true {{\n{code}\n}}\nreturn a"
+                        ));
+                        
+                        state.variables.insert(arr_name);
+                        code
                     }
-                    
-                    code
                 });
 
             let explicit_print_values = choice((
@@ -242,7 +250,7 @@ fn parser<'a>() -> parser_type!('a, String) {
 
         global
             .map_with_state(|stmts, _, state: &mut State| {
-                let mut code = format_stmts(stmts, state, true);
+                let mut code = format_stmts(stmts, state, true, "");
 
                 if !state.variables.is_empty() {
                     code = format!("{}\n{}\n{code}",
@@ -288,7 +296,8 @@ fn set_stmt<'a>(parser: parser_type!('a, String), is_stmt: bool) -> parser_type!
         })
 }
 
-fn format_stmts(stmts: Vec<SpwnCode>, state: &mut State, global: bool) -> String {
+/// `return_fmt` replaces `#` with last value
+fn format_stmts(stmts: Vec<SpwnCode>, state: &mut State, global: bool, return_fmt: &str) -> String {
     if stmts.is_empty() {
         String::new()
     } else {
@@ -308,12 +317,16 @@ fn format_stmts(stmts: Vec<SpwnCode>, state: &mut State, global: bool) -> String
                     match print {
                         PrintBehavior::Explicit => code,
                         PrintBehavior::Implicit => {
-                            let helper = state.add_helper(HelperFunction::Print);
-                            format!("{helper}({code})")
+                            if state.is_stmt() {
+                                format!("$.print({code})")
+                            } else {
+                                let helper = state.add_helper(HelperFunction::Print);
+                                format!("{helper}({code})")
+                            }
                         }
                     }
                 } else {
-                    format!("return {code}")
+                    return_fmt.replace('#', &code)
                 }
                 .lines()
                 .map(|line| format!("{indent}{line}"))
