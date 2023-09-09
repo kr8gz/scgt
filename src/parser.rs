@@ -18,7 +18,7 @@ struct State<'a> {
     variables: BTreeSet<String>,
     source: &'a str,
     
-    stmt_levels: Vec<bool>,
+    levels: Vec<Option<bool>>,
 }
 
 impl<'a> State<'a> {
@@ -28,7 +28,7 @@ impl<'a> State<'a> {
             variables: BTreeSet::new(),
             source,
 
-            stmt_levels: Vec::new(),
+            levels: Vec::new(),
         }
     }
 
@@ -38,7 +38,12 @@ impl<'a> State<'a> {
     }
 
     fn is_stmt(&self) -> bool {
-        self.stmt_levels.last().copied().unwrap_or(true)
+        self.levels
+            .iter()
+            .rev()
+            .find_map(Option::as_ref)
+            .copied()
+            .unwrap_or(true)
     }
 }
 
@@ -179,16 +184,17 @@ fn parser<'a>() -> parser_type!('a, String) {
             }
             .map(String::from);
 
-            let implicit_print_values = choice((
-                set_stmt(choice((
+            let implicit_print_values = set_stmt(
+                choice((
                     int, float,
                     char_literal, string,
                     value_ident, type_indicator,
                     inner_block,
                     invert,
                     hardcoded,
-                )), false),
-            ))
+                )),
+                Some(false)
+            )
             .map_with_span(SpwnCode::implicit_print);
 
             let explicit_print = just('$')
@@ -201,30 +207,12 @@ fn parser<'a>() -> parser_type!('a, String) {
             let infinite_loop = block.clone()
                 .delimited_by(just('L'), closing)
                 .map_with_state(|stmts, _, state| {
-                    if state.is_stmt() {
-                        let code = format_stmts(stmts, state, false, "");
-                        format!("while true {{\n{code}\n}}")
-                    } else {
-                        let arr_name = format!("_scgt_while_{}", state.stmt_levels.len());
-                        let mut code = format_stmts(
-                            stmts, state, false,
-                            &format!("{arr_name}.push(#)")
-                        );
-
-                        code = wrap_with_block(format!(
-                            "let {arr_name} = []\nwhile true {{\n{code}\n}}\nreturn a"
-                        ));
-                        
-                        state.variables.insert(arr_name);
-                        code
-                    }
+                    format_loop("while true", "while", stmts, state)
                 });
 
             let explicit_print_values = choice((
-                set_stmt(choice((
-                    explicit_print,
-                )), false),
-                infinite_loop,
+                set_stmt(explicit_print, Some(false)),
+                set_stmt(infinite_loop, None),
             ))
             .map_with_span(SpwnCode::explicit_print);
 
@@ -285,19 +273,19 @@ fn parser<'a>() -> parser_type!('a, String) {
     ))
 }
 
-fn set_stmt<'a>(parser: parser_type!('a, String), is_stmt: bool) -> parser_type!('a, String) {
+fn set_stmt<'a>(parser: parser_type!('a, String), is_stmt: Option<bool>) -> parser_type!('a, String) {
     empty()
         .map_with_state(move |_, _, state: &mut State| {
-            state.stmt_levels.push(is_stmt)
+            state.levels.push(is_stmt)
         })
         .then(parser)
         // set to previous state in ALL CASES
         .map_err_with_state(|err, _, state: &mut State| {
-            state.stmt_levels.pop();
+            state.levels.pop();
             err
         })
         .map_with_state(|((), code), _, state: &mut State| {
-            state.stmt_levels.pop();
+            state.levels.pop();
             code
         })
 }
@@ -353,4 +341,24 @@ fn wrap_with_block(mut code: String) -> String {
         .collect::<String>();
 
     format!("() {{\n{code}}} ()")
+}
+
+fn format_loop(start: &str, loop_type: &str, stmts: Vec<SpwnCode>, state: &mut State) -> String {
+    if state.is_stmt() {
+        let code = format_stmts(stmts, state, false, "");
+        format!("{start} {{\n{code}\n}}")
+    } else {
+        let arr_name = format!("_scgt_{loop_type}_{}", state.levels.len());
+        let mut code = format_stmts(
+            stmts, state, false,
+            &format!("{arr_name}.push(#)")
+        );
+
+        code = wrap_with_block(format!(
+            "let {arr_name} = []\n{start} {{\n{code}\n}}\nreturn a"
+        ));
+        
+        state.variables.insert(arr_name);
+        code
+    }
 }

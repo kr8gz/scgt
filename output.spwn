@@ -1,8 +1,34 @@
 // Automatically generated SCGT helper functions
-_scgt_get = (v) => v // to counteract the clone bug in SPWN v0.8
+_scgt_print = (v) {
+    $.print(v)
+    return v
+}
 
 // Initialize variables used
-let _scgt_get = null
+let _scgt_while_3 = null
+let _scgt_while_4 = null
 
-// __scgt_get
-$.print(_scgt_get(_scgt_get))
+// L(L1L1
+while true {
+    // (L1L1
+    $.print(() {
+        // L1L1
+        return () {
+            let _scgt_while_3 = []
+            while true {
+                // 1
+                _scgt_print(1)
+                // L1
+                _scgt_while_3.push(() {
+                    let _scgt_while_4 = []
+                    while true {
+                        // 1
+                        _scgt_while_4.push(1)
+                    }
+                    return a
+                } ())
+            }
+            return a
+        } ()
+    } ())
+}
