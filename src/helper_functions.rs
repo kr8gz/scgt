@@ -30,7 +30,6 @@ helper_functions! {
     Get: "get",
     Invert: "invert",
     Iter: "iter",
-    Last: "last",
     Mod: "mod",
     Print: "print",
     Set: "set",

@@ -1,19 +1,19 @@
 // Automatically generated SCGT helper functions
-_scgt_last = (b: @array) => null if b.is_empty() else b[-1]
-
 _scgt_print = (v) {
     $.print(v)
     return v
 }
 
-// ((L1
-_scgt_print(_scgt_last([
+// L(L1
+while true {
     // (L1
-    _scgt_last([
+    _scgt_print(() {
         // L1
-        while true {
-            // 1
-            _scgt_print(1)
-        }
-    ])
-]))
+        return () {
+            while true {
+                // 1
+                return 1
+            }
+        } ()
+    } ())
+}

@@ -8,8 +8,8 @@ type Err<'a> = Rich<'a, char>;
 type Extra<'a> = extra::Full<Err<'a>, State<'a>, ()>;
 
 macro_rules! parser_type {
-    ( $ret_t:ty ) => {
-        impl Parser<'a, &'a str, $ret_t, Extra<'a>> + Clone
+    ( $lt:lifetime, $ret_t:ty ) => {
+        impl Parser<$lt, &$lt str, $ret_t, Extra<$lt>> + Clone
     }
 }
 
@@ -17,6 +17,8 @@ struct State<'a> {
     helper_functions: BTreeSet<HelperFunction>,
     variables: BTreeSet<String>,
     source: &'a str,
+    
+    stmt_levels: Vec<bool>,
 }
 
 impl<'a> State<'a> {
@@ -25,12 +27,18 @@ impl<'a> State<'a> {
             helper_functions: BTreeSet::new(),
             variables: BTreeSet::new(),
             source,
+
+            stmt_levels: Vec::new(),
         }
     }
 
     fn add_helper(&mut self, helper: HelperFunction) -> &'static str {
         self.helper_functions.insert(helper);
         helper.spwn_name()
+    }
+
+    fn is_stmt(&self) -> bool {
+        self.stmt_levels.last().copied().unwrap_or(true)
     }
 }
 
@@ -60,7 +68,7 @@ pub fn parse(code: &str) -> ParseResult<String, Err<'_>> {
     parser().parse_with_state(code, &mut state)
 }
 
-fn parser<'a>() -> parser_type!(String) {
+fn parser<'a>() -> parser_type!('a, String) {
     let global = recursive(|block| {
         let ident = one_of("abcdefghijklmnopqrstuvwxyz")
             .repeated().at_least(1)
@@ -127,11 +135,11 @@ fn parser<'a>() -> parser_type!(String) {
             ))
             .map(|v| format!("\"{}\"", v.into_iter().collect::<String>()));
 
-            let value_ident = ident.map_with_state(|s, _, state: &mut State| {
+            let value_ident = ident.map_with_state(|name, _, state: &mut State| {
                 let helper = state.add_helper(HelperFunction::Get);
-                let code = format!("{helper}({s})");
+                let code = format!("{helper}({name})");
 
-                state.variables.insert(s);
+                state.variables.insert(name);
 
                 code
             });
@@ -140,11 +148,11 @@ fn parser<'a>() -> parser_type!(String) {
                 .ignore_then(ident)
                 .map(|name| format!("@{name}"));
 
-            let inner_block = finish_block(block.clone(), true, ",\n", true)
+            let inner_block = block.clone()
                 .delimited_by(just('('), closing)
-                .map_with_state(|s, _, state: &mut State| {
-                    let helper = state.add_helper(HelperFunction::Last);
-                    format!("{helper}([{s}])")
+                .map_with_state(|stmts, _, state: &mut State| {
+                    let code = format_stmts(stmts, state, false);
+                    format!("() {{\n{code}\n}} ()")
                 });
 
             let invert = just('!')
@@ -168,12 +176,14 @@ fn parser<'a>() -> parser_type!(String) {
             .map(String::from);
 
             let implicit_print_values = choice((
-                int, float,
-                char_literal, string,
-                value_ident, type_indicator,
-                inner_block,
-                invert,
-                hardcoded,
+                set_stmt(choice((
+                    int, float,
+                    char_literal, string,
+                    value_ident, type_indicator,
+                    inner_block,
+                    invert,
+                    hardcoded,
+                )), false),
             ))
             .map_with_span(SpwnCode::implicit_print);
 
@@ -184,13 +194,22 @@ fn parser<'a>() -> parser_type!(String) {
                     format!("{helper}({code})")
                 });
 
-            // TODO this return_last should be true if it is still accessible from statement level
-            let infinite_loop = finish_block(block.clone(), false, "\n", true)
+            let infinite_loop = block.clone()
                 .delimited_by(just('L'), closing)
-                .map(|s| format!("while true {{{s}}}"));
+                .map_with_state(|stmts, _, state| {
+                    let mut code = format_stmts(stmts, state, false);
+                    code = format!("while true {{\n{code}\n}}");
+                    if !state.is_stmt() {
+                        code = wrap_with_block(code);
+                    }
+                    
+                    code
+                });
 
             let explicit_print_values = choice((
-                explicit_print,
+                set_stmt(choice((
+                    explicit_print,
+                )), false),
                 infinite_loop,
             ))
             .map_with_span(SpwnCode::explicit_print);
@@ -208,8 +227,9 @@ fn parser<'a>() -> parser_type!(String) {
         choice((
             expression,
         ))
-        .padded_by(just('\n').or_not())
-        .repeated()
+        .separated_by(just('\n').repeated())
+        .allow_leading()
+        .allow_trailing()
         .collect::<Vec<_>>()
         .labelled("statement")
     });
@@ -220,8 +240,10 @@ fn parser<'a>() -> parser_type!(String) {
             ":)".to_string()
         }),
 
-        finish_block(global, false, "\n\n", false)
-            .map_with_state(|mut code, _, state: &mut State| {
+        global
+            .map_with_state(|stmts, _, state: &mut State| {
+                let mut code = format_stmts(stmts, state, true);
+
                 if !state.variables.is_empty() {
                     code = format!("{}\n{}\n{code}",
                         "// Initialize variables used",
@@ -244,58 +266,72 @@ fn parser<'a>() -> parser_type!(String) {
                     );
                 }
 
-                code
+                format!("{code}\n")
             })
     ))
 }
 
-fn finish_block<'a>(
-    statements: parser_type!(Vec<SpwnCode>),
-    return_last: bool,
-    delimiter: &'a str,
-    format: bool,
-) -> parser_type!(String) {
-    statements.map_with_state(move |v, _, state: &mut State| {
-        if v.is_empty() {
-            String::new()
-        } else {
-            let last_index = v.len() - 1;
-            let indent = if format { "    " } else { "" };
-    
-            let code = v.into_iter().enumerate().map(|(i, SpwnCode { mut code, span, print })| {
+fn set_stmt<'a>(parser: parser_type!('a, String), is_stmt: bool) -> parser_type!('a, String) {
+    empty()
+        .map_with_state(move |_, _, state: &mut State| {
+            state.stmt_levels.push(is_stmt)
+        })
+        .then(parser)
+        // set to previous state in ALL CASES
+        .map_err_with_state(|err, _, state: &mut State| {
+            state.stmt_levels.pop();
+            err
+        })
+        .map_with_state(|((), code), _, state: &mut State| {
+            state.stmt_levels.pop();
+            code
+        })
+}
+
+fn format_stmts(stmts: Vec<SpwnCode>, state: &mut State, global: bool) -> String {
+    if stmts.is_empty() {
+        String::new()
+    } else {
+        let last_index = stmts.len() - 1;
+        let indent = if global { "" } else { "    " };
+
+        stmts
+            .into_iter()
+            .enumerate()
+            .map(|(i, SpwnCode { code, span, print })| {
                 let comment = state.source[span.start..span.end]
                     .lines()
                     .map(|line| format!("{indent}// {line}\n"))
                     .collect::<String>();
-    
-                if return_last && i == last_index {
-                    // TODO check here again once returning values is a thing
-                } else {
-                    code = match print {
+
+                let code = if i < last_index || state.is_stmt() {
+                    match print {
                         PrintBehavior::Explicit => code,
                         PrintBehavior::Implicit => {
                             let helper = state.add_helper(HelperFunction::Print);
                             format!("{helper}({code})")
                         }
-                    };
+                    }
+                } else {
+                    format!("return {code}")
                 }
-
-                code = code
-                    .lines()
-                    .map(|line| format!("{indent}{line}"))
-                    .collect::<Vec<_>>()
-                    .join("\n");
+                .lines()
+                .map(|line| format!("{indent}{line}"))
+                .collect::<Vec<_>>()
+                .join("\n");
             
                 format!("{comment}{code}")
             })
             .collect::<Vec<_>>()
-            .join(delimiter);
+            .join(if global { "\n\n" } else { "\n" })
+    }
+}
 
-            if format {
-                format!("\n{code}\n")
-            } else {
-                code
-            }
-        }
-    })
+fn wrap_with_block(mut code: String) -> String {
+    code = code
+        .lines()
+        .map(|line| format!("    {line}\n"))
+        .collect::<String>();
+
+    format!("() {{\n{code}}} ()")
 }

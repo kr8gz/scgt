@@ -1,1 +1,0 @@
-(b: @array) => null if b.is_empty() else b[-1]
