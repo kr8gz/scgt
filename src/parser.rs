@@ -107,6 +107,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                 .map(|c| format!("\"{c}\""));
 
             let string_char = choice((
+                // SCGT escapes
                 just('\\')
                     .ignore_then(
                         select! {
@@ -116,9 +117,16 @@ fn parser<'a>() -> parser_type!('a, String) {
                             '`' => "`",
                             '\\' => "\\\\",
                         }
-                        .or_not()
                     )
-                    .map(|s| s.unwrap_or("\\").to_string()),
+                    .map(String::from),
+
+                // SPWN escapes
+                select! {
+                    '"' => "\\\"",
+                    '\'' => "\\'",
+                    '\\' => "\\\\",
+                }
+                .map(String::from),
 
                 any()
                     .and_is(just('`').ignored().or(text::newline()).not())

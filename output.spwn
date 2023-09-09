@@ -4,8 +4,36 @@ _scgt_print = (v) {
     return v
 }
 
-// $$(3
+// Initialize variables used
+let _scgt_while_3 = null
+let _scgt_while_5 = null
+let _scgt_while_6 = null
+
+// $$L(LL`se"\"x`A
 $.print(_scgt_print(() {
-    // 3
-    return 3
+    let _scgt_while_3 = []
+    while true {
+        // (LL`se"\"x`A
+        _scgt_while_3.push(() {
+            // LL`se"\"x`A
+            return () {
+                let _scgt_while_5 = []
+                while true {
+                    // L`se"\"x`A
+                    _scgt_while_5.push(() {
+                        let _scgt_while_6 = []
+                        while true {
+                            // `se"\"x`
+                            _scgt_print("se\"\\\"x")
+                            // A
+                            _scgt_while_6.push([])
+                        }
+                        return _scgt_while_6
+                    } ())
+                }
+                return _scgt_while_5
+            } ()
+        } ())
+    }
+    return _scgt_while_3
 } ()))
