@@ -88,6 +88,7 @@ Only in this order
 ## Postfixes
 * ``[;] [ ]`` - ``i!v`` assigns a value and returns it
 * ``[;] [ ]`` - ``i@d`` declares a type ``@i`` with the members in ``d``
+    * *TODO this wont work*
 * ``[ ] [ ]`` - ``v?v`` ( ``v`` )? for ternary operator
     * *TODO fix the else syntax, this wont work*
     * *TODO `v? v` for no else?*

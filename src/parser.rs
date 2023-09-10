@@ -103,7 +103,6 @@ fn parser<'a>() -> parser_type!('a, String) {
 
         let expression = recursive(|expression| {
             let value = recursive(|value| {
-
                 let int = text::int(10).map(String::from);
 
                 let float = text::int(10).slice().or_not()
@@ -266,6 +265,22 @@ fn parser<'a>() -> parser_type!('a, String) {
                             format!("{helper}({code})")
                         }
                     });
+
+                let assignment = ident
+                    .then(
+                        set_stmt(expression.clone(), Some(false))
+                            .delimited_by(just('!'), closing)
+                    )
+                    .map_with_state(|(name, SpwnCode { code, .. }), _, state: &mut State| {
+                        let code = if state.is_stmt() {
+                            format!("{name} = {code}")
+                        } else {
+                            let helper = state.add_helper(HelperFunction::Set);
+                            format!("{helper}({name}, {code})")
+                        };
+                        state.variables.insert(name);
+                        code
+                    });
     
                 let on_touch = expression.clone()
                     .delimited_by(just('E'), closing)
@@ -280,13 +295,15 @@ fn parser<'a>() -> parser_type!('a, String) {
                     });
     
                 let explicit_print_values = choice((
-                    explicit_print, // set_stmt is called at definition
+                    // set_stmt called at definitions
+                    explicit_print,
+                    assignment,
                     set_stmt(on_touch, Some(false)),
                     set_stmt(infinite_loop, None),
                 ))
                 .map_with_span(SpwnCode::explicit_print);
     
-                implicit_print_values.or(explicit_print_values).labelled("value")
+                explicit_print_values.or(implicit_print_values).labelled("value")
             });
 
             // TODO add space " " handling
