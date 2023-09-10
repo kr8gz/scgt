@@ -406,15 +406,17 @@ fn parser<'a>() -> parser_type!('a, String) {
                     .repeated(),
                     |value: SpwnCode, postfix: Postfix, state: &mut State| {
                         let code = value.get_code(false, state);
-                        let postfix = match postfix.data {
+                        let span = (value.span.start..postfix.span.end).into();
+
+                        match postfix.data {
                             PostfixType::Assignment { expr } => {
-                                format_assign(code, expr, postfix.span)
+                                format_assign(code, expr, span)
                             }
                             
                             PostfixType::MemberAccess { name } => {
                                 SpwnCode::simple_implicit(
                                     CodeVariables::none(format!("{code}.{name}")),
-                                    postfix.span,
+                                    span,
                                 )
                             }
                             
@@ -422,26 +424,16 @@ fn parser<'a>() -> parser_type!('a, String) {
                                 let mut helpers = BTreeSet::new();
                                 let call = HelperFunction::Call;
                                 helpers.insert(call);
+
                                 SpwnCode::simple_explicit(
                                     CodeVariables {
                                         code: format!("{}({code})", call.spwn_name()),
                                         helpers: Some(helpers),
                                         variables: None,
                                     },
-                                    postfix.span,
+                                    span,
                                 )
                             }
-                        };
-
-                        SpwnCode {
-                            expr: CodeVariables {
-                                code: postfix.get_code(false, state),
-                                helpers: None,
-                                variables: None,
-                            },
-                            stmt: None,
-                            span: (value.span.start..postfix.span.end).into(),
-                            print: postfix.print,
                         }
                     },
                 );
