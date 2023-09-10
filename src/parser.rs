@@ -17,6 +17,8 @@ struct State<'a> {
     helper_functions: BTreeSet<HelperFunction>,
     variables: BTreeSet<String>,
     source: &'a str,
+
+    indent_size: usize,
     
     levels: Vec<Option<bool>>,
 }
@@ -28,6 +30,8 @@ impl<'a> State<'a> {
             variables: BTreeSet::new(),
             source,
 
+            indent_size: 2,
+
             levels: Vec::new(),
         }
     }
@@ -35,6 +39,10 @@ impl<'a> State<'a> {
     fn add_helper(&mut self, helper: HelperFunction) -> &'static str {
         self.helper_functions.insert(helper);
         helper.spwn_name()
+    }
+
+    fn get_indent(&self) -> String {
+        " ".repeat(self.indent_size)
     }
 
     fn is_stmt(&self) -> bool {
@@ -168,8 +176,7 @@ fn parser<'a>() -> parser_type!('a, String) {
             let inner_block = block.clone()
                 .delimited_by(just('('), closing)
                 .map_with_state(|stmts, _, state: &mut State| {
-                    let code = format_stmts(stmts, state, false, "return #");
-                    format!("() {{\n{code}\n}} ()")
+                    wrap_with_block(format_stmts(stmts, state, false, "return #"), None)
                 });
 
             let invert = just('!')
@@ -219,7 +226,7 @@ fn parser<'a>() -> parser_type!('a, String) {
             let infinite_loop = block.clone()
                 .delimited_by(just('L'), closing)
                 .map_with_state(|stmts, _, state| {
-                    format_loop("while true", "while", stmts, state)
+                    format_loop("while true", stmts, state)
                 });
 
             let explicit_print_values = choice((
@@ -271,11 +278,12 @@ fn parser<'a>() -> parser_type!('a, String) {
 
                 if !state.helper_functions.is_empty() {
                     code = format!("{}\n{}{code}",
-                        "// Automatically generated SCGT helper functions",
+                        "// Automatically generated helper functions",
                         state.helper_functions
                             .iter()
                             .rfold(String::new(), |rest, helper| {
-                                format!("{} = {}\n\n{rest}", helper.spwn_name(), helper.spwn_impl())
+                                let code = helper.spwn_impl().replace("    ", &state.get_indent());
+                                format!("{} = {code}\n\n{rest}", helper.spwn_name())
                             })
                     );
                 }
@@ -303,12 +311,17 @@ fn set_stmt<'a, T>(parser: parser_type!('a, T), is_stmt: Option<bool>) -> parser
 }
 
 /// `return_fmt` replaces `#` with last value
-fn format_stmts(stmts: Vec<SpwnCode>, state: &mut State, global: bool, return_fmt: &str) -> String {
+fn format_stmts(
+    stmts: Vec<SpwnCode>,
+    state: &mut State,
+    global: bool,
+    return_fmt: &str,
+) -> String {
     if stmts.is_empty() {
         String::new()
     } else {
         let last_index = stmts.len() - 1;
-        let indent = if global { "" } else { "    " };
+        let indent = if global { String::new() } else { state.get_indent() };
 
         stmts
             .into_iter()
@@ -346,31 +359,35 @@ fn format_stmts(stmts: Vec<SpwnCode>, state: &mut State, global: bool, return_fm
     }
 }
 
-fn wrap_with_block(mut code: String) -> String {
-    code = code
-        .lines()
-        .map(|line| format!("    {line}\n"))
-        .collect::<String>();
+fn wrap_with_block(mut code: String, indent: Option<String>) -> String {
+    if let Some(indent) = indent {
+        code = code
+            .lines()
+            .map(|line| format!("{indent}{line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+    }
 
-    format!("() {{\n{code}}} ()")
+    format!("() {{\n{code}\n}} ()")
 }
 
-fn format_loop(start: &str, loop_type: &str, stmts: Vec<SpwnCode>, state: &mut State) -> String {
-    if state.is_stmt() {
-        let code = format_stmts(stmts, state, false, "");
-        format!("{start} {{\n{code}\n}}")
+fn format_loop(start: &str, stmts: Vec<SpwnCode>, state: &mut State) -> String {
+    let mut code;
+    if stmts.is_empty() {
+        code = format!("{start} {{ }}")
+    } else if state.is_stmt() {
+        code = format_stmts(stmts, state, false, "");
+        code = format!("{start} {{\n{code}\n}}");
     } else {
-        let arr_name = format!("_scgt_{loop_type}_{}", state.levels.len());
-        let mut code = format_stmts(
-            stmts, state, false,
-            &format!("{arr_name}.push(#)")
-        );
-
-        code = wrap_with_block(format!(
-            "let {arr_name} = []\n{start} {{\n{code}\n}}\nreturn {arr_name}"
-        ));
-        
+        let arr_name = format!("_scgt_loop_{}", state.levels.len());
+        code = format_stmts(stmts, state, false, &format!("{arr_name}.push(#)"));
+        code = format!("let {arr_name} = []\n{start} {{\n{code}\n}}\nreturn {arr_name}");
         state.variables.insert(arr_name);
+    }
+
+    if state.is_stmt() {
         code
+    } else {
+        wrap_with_block(code, Some(state.get_indent()))
     }
 }
