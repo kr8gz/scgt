@@ -1,20 +1,31 @@
 // Automatically generated helper functions
-_scgt_get = (v) => v // to counteract the clone bug in SPWN v0.8
-
-_scgt_set = (&t, v) {
-    t = v
-    return v
+_scgt_invert = (v) => match v.type {
+    == @number: -v,
+    == @bool: !v,
+    in [@string, @array]: v.reverse(),
+    else: v
 }
 
 // Initialize variables used
-let a = null
-let b = null
+let _scgt_loop_5 = null
 
-// a!2
-a = 2
-
-// b!3
-b = 3
-
-// a!b!a
-a = _scgt_set(b, _scgt_get(a))
+// M}$!L(`se"\"x`A
+$.print(() {
+    // }$!L(`se"\"x`A
+    return !{
+        // $!L(`se"\"x`A
+        $.print(_scgt_invert(() {
+            let _scgt_loop_5 = []
+            while true {
+                // (`se"\"x`A
+                _scgt_loop_5.push(() {
+                    // `se"\"x`
+                    $.print("se\"\\\"x")
+                    // A
+                    return []
+                } ())
+            }
+            return _scgt_loop_5
+        } ()))
+    }
+})

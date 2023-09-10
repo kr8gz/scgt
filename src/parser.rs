@@ -401,14 +401,12 @@ fn format_stmts(
                     .map(|line| format!("{indent}// {line}\n"))
                     .collect::<String>();
 
-                let code = if i < last_index || return_fmt.is_none() {
-                    match print {
+                let code = match return_fmt {
+                    Some(r) if i == last_index => r.replace('#', &code),
+                    _ => match print {
                         PrintBehavior::Explicit => code,
                         PrintBehavior::Implicit => format!("$.print({code})"),
                     }
-                } else {
-                    // unwrap because return_fmt is checked for None beforehand
-                    return_fmt.unwrap().replace('#', &code)
                 }
                 .lines()
                 .map(|line| format!("{indent}{line}"))
