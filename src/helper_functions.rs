@@ -1,6 +1,6 @@
 macro_rules! helper_functions {
     (
-        PREFIX: $prefix:literal,
+        % PREFIX $prefix:literal
         $( $name:ident: $spwn_name:literal, )*
     ) => {
         #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -25,7 +25,7 @@ macro_rules! helper_functions {
 }
 
 helper_functions! {
-    PREFIX: "_scgt_",
+    % PREFIX "_scgt_"
     Bool: "bool",
     Get: "get",
     Invert: "invert",

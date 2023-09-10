@@ -185,7 +185,8 @@ fn parser<'a>() -> parser_type!('a, String) {
                 let inner_block = block.clone()
                     .delimited_by(just('('), closing)
                     .map_with_state(|stmts, _, state: &mut State| {
-                        wrap_with_block(format_stmts(stmts, state, false, "return #"), None)
+                        let code = format_stmts(stmts, state, false, Some("return #"));
+                        wrap_with_block(code, None)
                     });
     
                 let invert = just('!')
@@ -199,10 +200,25 @@ fn parser<'a>() -> parser_type!('a, String) {
                     .delimited_by(just('}'), closing)
                     .map_with_state(|stmts, _, state: &mut State| {
                         // TODO check back here when `-> return`
-                        let code = format_stmts(stmts, state, false, "");
+                        let code = format_stmts(stmts, state, false, None);
                         format!("!{{\n{code}\n}}")
                     });
+
+                let loop_variables = one_of("IJK")
+                    .map_with_state(|name: char, _, state: &mut State| {
+                        let name = format!("_scgt_loop_{}", name.to_lowercase());
+                        state.variables.insert(name.clone());
+                        name
+                    });
     
+                let macro_definition_no_args = block.clone()
+                    .delimited_by(just('M'), closing)
+                    .map_with_state(|stmts, _, state: &mut State| {
+                        // TODO check back here when `-> return`
+                        let code = format_stmts(stmts, state, false, Some("return #"));
+                        format!("() {{\n{code}\n}}")
+                    });
+
                 let hardcoded = select! {
                     'A' => "[]",
                     'B' => "?b",
@@ -225,6 +241,8 @@ fn parser<'a>() -> parser_type!('a, String) {
                             value_ident, type_indicator,
                             inner_block,
                             invert,
+                            loop_variables,
+                            macro_definition_no_args,
                             hardcoded,
                         )),
                         Some(false)
@@ -297,7 +315,7 @@ fn parser<'a>() -> parser_type!('a, String) {
 
         global
             .map_with_state(|stmts, _, state: &mut State| {
-                let mut code = format_stmts(stmts, state, true, "");
+                let mut code = format_stmts(stmts, state, true, None);
 
                 if !state.variables.is_empty() {
                     code = format!("{}\n{}\n{code}",
@@ -349,7 +367,7 @@ fn format_stmts(
     stmts: Vec<SpwnCode>,
     state: &mut State,
     global: bool,
-    return_fmt: &str,
+    return_fmt: Option<&str>,
 ) -> String {
     if stmts.is_empty() {
         String::new()
@@ -366,13 +384,14 @@ fn format_stmts(
                     .map(|line| format!("{indent}// {line}\n"))
                     .collect::<String>();
 
-                let code = if i < last_index || state.is_stmt() {
+                let code = if i < last_index || return_fmt.is_none() {
                     match print {
                         PrintBehavior::Explicit => code,
                         PrintBehavior::Implicit => format!("$.print({code})"),
                     }
                 } else {
-                    return_fmt.replace('#', &code)
+                    // unwrap because return_fmt is checked for None beforehand
+                    return_fmt.unwrap().replace('#', &code)
                 }
                 .lines()
                 .map(|line| format!("{indent}{line}"))
@@ -403,11 +422,11 @@ fn format_loop(start: &str, stmts: Vec<SpwnCode>, state: &mut State) -> String {
     if stmts.is_empty() {
         code = format!("{start} {{ }}")
     } else if state.is_stmt() {
-        code = format_stmts(stmts, state, false, "");
+        code = format_stmts(stmts, state, false, None);
         code = format!("{start} {{\n{code}\n}}");
     } else {
         let arr_name = format!("_scgt_loop_{}", state.levels.len());
-        code = format_stmts(stmts, state, false, &format!("{arr_name}.push(#)"));
+        code = format_stmts(stmts, state, false, Some(&format!("{arr_name}.push(#)")));
         code = format!("let {arr_name} = []\n{start} {{\n{code}\n}}\nreturn {arr_name}");
         state.variables.insert(arr_name);
     }
