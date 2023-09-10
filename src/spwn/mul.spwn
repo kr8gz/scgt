@@ -1,0 +1,6 @@
+(n: @number, v) => match v.type {
+    in [@array, @number, @string]: n * v,
+    in [@group, @color, @item, @block]: v.type(n * @number(v)),
+    == @bool: n * @number(v)
+    else: v
+}

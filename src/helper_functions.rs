@@ -31,6 +31,7 @@ helper_functions! {
     Invert: "invert",
     Iter: "iter",
     Mod: "mod",
+    Mul: "mul",
     Print: "print",
     Set: "set",
     Spawn: "spawn",

@@ -102,163 +102,174 @@ fn parser<'a>() -> parser_type!('a, String) {
         ));
 
         let expression = recursive(|expression| {
-            let int = text::int(10).map(String::from);
+            let value = recursive(|value| {
 
-            let float = text::int(10).slice().or_not()
-                .then_ignore(just('.'))
-                .then(text::digits(10).slice().or_not())
-                .filter(|(bef, aft)| bef.as_ref().or(aft.as_ref()).is_some())
-                .map(|(bef, aft)| format!("{}.{}", bef.unwrap_or("0"), aft.unwrap_or("0")));
+                let int = text::int(10).map(String::from);
 
-            let char_literal = just('\'')
-                .ignore_then(any())
-                .map(|c| format!("\"{c}\""));
-
-            let string_char = choice((
-                // SCGT escapes
-                just('\\')
-                    .ignore_then(
-                        select! {
-                            'n' => "\\n",
-                            'r' => "\\r",
-                            't' => "\\t",
-                            '`' => "`",
-                            '\\' => "\\\\",
-                        }
-                    )
-                    .map(String::from),
-
-                // SPWN escapes
-                select! {
-                    '"' => "\\\"",
-                    '\'' => "\\'",
-                    '\\' => "\\\\",
-                }
-                .map(String::from),
-
-                any()
-                    .and_is(just('`').ignored().or(text::newline()).not())
-                    .map(String::from)
-            ));
-
-            let string = choice((
-                // `...`
-                string_char
-                    .repeated()
-                    .collect::<Vec<_>>()
-                    .delimited_by(
-                        just('`'),
-                        choice((
-                            just('`').ignored(),
-                            text::newline().rewind(),
-                            end()
-                        ))
-                    ),
-                // \...` (allows newlines)
-                string_char.or(text::newline().to("\n".to_string()))
-                    .repeated()
-                    .collect::<Vec<_>>()
-                    .delimited_by(just('\\'), just('`').ignored().or(end()))
-            ))
-            .map(|v| format!("\"{}\"", v.into_iter().collect::<String>()));
-
-            let value_ident = ident.map_with_state(|name, _, state: &mut State| {
-                let helper = state.add_helper(HelperFunction::Get);
-                let code = format!("{helper}({name})");
-                state.variables.insert(name);
-                code
-            });
-
-            let type_indicator = just('@')
-                .ignore_then(ident)
-                .map(|name| format!("@{name}"));
-
-            let inner_block = block.clone()
-                .delimited_by(just('('), closing)
-                .map_with_state(|stmts, _, state: &mut State| {
-                    wrap_with_block(format_stmts(stmts, state, false, "return #"), None)
-                });
-
-            let invert = just('!')
-                .ignore_then(expression.clone())
-                .map_with_state(|SpwnCode { code, .. }, _, state: &mut State| {
-                    let helper = state.add_helper(HelperFunction::Invert);
-                    format!("{helper}({code})")
-                });
-
-            let trigger_function = block.clone()
-                .delimited_by(just('}'), closing)
-                .map_with_state(|stmts, _, state: &mut State| {
-                    // TODO check back here when `-> return`
-                    let code = format_stmts(stmts, state, false, "");
-                    format!("!{{\n{code}\n}}")
-                });
-
-            let hardcoded = select! {
-                'A' => "[]",
-                'B' => "?b",
-                'C' => "?c",
-                'D' => "?i",
-                'F' => "false",
-                'G' => "?g",
-                'N' => "null",
-                'S' => "\"\"",
-                'T' => "true",
-            }
-            .map(String::from);
-
-            let implicit_print_values = choice((
-                set_stmt(
-                    choice((
-                        int, float,
-                        char_literal, string,
-                        value_ident, type_indicator,
-                        inner_block,
-                        invert,
-                        hardcoded,
-                    )),
-                    Some(false)
-                ),
-                set_stmt(
-                    choice((
-                        trigger_function,
-                    )),
-                    Some(true)
-                )
-            ))
-            .map_with_span(SpwnCode::implicit_print);
-
-            let explicit_print = just('$')
-                .ignore_then(set_stmt(expression.clone(), Some(false)))
-                .map_with_state(|SpwnCode { code, .. }, _, state: &mut State| {
-                    if state.is_stmt() {
-                        format!("$.print({code})")
-                    } else {
-                        let helper = state.add_helper(HelperFunction::Print);
-                        format!("{helper}({code})")
+                let float = text::int(10).slice().or_not()
+                    .then_ignore(just('.'))
+                    .then(text::digits(10).slice().or_not())
+                    .filter(|(bef, aft)| bef.as_ref().or(aft.as_ref()).is_some())
+                    .map(|(bef, aft)| format!("{}.{}", bef.unwrap_or("0"), aft.unwrap_or("0")));
+    
+                let short_multiplication = int.or(float)
+                    .then(value.clone())
+                    .map_with_state(|(n, SpwnCode { code, .. }), _, state: &mut State| {
+                        let helper = state.add_helper(HelperFunction::Mul);
+                        format!("{helper}({n}, {code})")
+                    });
+    
+                let char_literal = just('\'')
+                    .ignore_then(any())
+                    .map(|c| format!("\"{c}\""));
+    
+                let string_char = choice((
+                    // SCGT escapes
+                    just('\\')
+                        .ignore_then(
+                            select! {
+                                'n' => "\\n",
+                                'r' => "\\r",
+                                't' => "\\t",
+                                '`' => "`",
+                                '\\' => "\\\\",
+                            }
+                        )
+                        .map(String::from),
+    
+                    // SPWN escapes
+                    select! {
+                        '"' => "\\\"",
+                        '\'' => "\\'",
+                        '\\' => "\\\\",
                     }
+                    .map(String::from),
+    
+                    any()
+                        .and_is(just('`').ignored().or(text::newline()).not())
+                        .map(String::from)
+                ));
+    
+                let string = choice((
+                    // `...`
+                    string_char
+                        .repeated()
+                        .collect::<Vec<_>>()
+                        .delimited_by(
+                            just('`'),
+                            choice((
+                                just('`').ignored(),
+                                text::newline().rewind(),
+                                end()
+                            ))
+                        ),
+                    // \...` (allows newlines)
+                    string_char.or(text::newline().to("\n".to_string()))
+                        .repeated()
+                        .collect::<Vec<_>>()
+                        .delimited_by(just('\\'), just('`').ignored().or(end()))
+                ))
+                .map(|v| format!("\"{}\"", v.into_iter().collect::<String>()));
+    
+                let value_ident = ident.map_with_state(|name, _, state: &mut State| {
+                    let helper = state.add_helper(HelperFunction::Get);
+                    let code = format!("{helper}({name})");
+                    state.variables.insert(name);
+                    code
                 });
-
-            let on_touch = expression.clone()
-                .delimited_by(just('E'), closing)
-                .map(|SpwnCode { code, .. }| {
-                    format!("on(touch(), {code})")
-                });
-
-            let infinite_loop = block.clone()
-                .delimited_by(just('L'), closing)
-                .map_with_state(|stmts, _, state| {
-                    format_loop("while true", stmts, state)
-                });
-
-            let explicit_print_values = choice((
-                explicit_print, // set_stmt is called at definition
-                set_stmt(on_touch, Some(false)),
-                set_stmt(infinite_loop, None),
-            ))
-            .map_with_span(SpwnCode::explicit_print);
-
-            let value = implicit_print_values.or(explicit_print_values).labelled("value");
+    
+                let type_indicator = just('@')
+                    .ignore_then(ident)
+                    .map(|name| format!("@{name}"));
+    
+                let inner_block = block.clone()
+                    .delimited_by(just('('), closing)
+                    .map_with_state(|stmts, _, state: &mut State| {
+                        wrap_with_block(format_stmts(stmts, state, false, "return #"), None)
+                    });
+    
+                let invert = just('!')
+                    .ignore_then(expression.clone())
+                    .map_with_state(|SpwnCode { code, .. }, _, state: &mut State| {
+                        let helper = state.add_helper(HelperFunction::Invert);
+                        format!("{helper}({code})")
+                    });
+    
+                let trigger_function = block.clone()
+                    .delimited_by(just('}'), closing)
+                    .map_with_state(|stmts, _, state: &mut State| {
+                        // TODO check back here when `-> return`
+                        let code = format_stmts(stmts, state, false, "");
+                        format!("!{{\n{code}\n}}")
+                    });
+    
+                let hardcoded = select! {
+                    'A' => "[]",
+                    'B' => "?b",
+                    'C' => "?c",
+                    'D' => "?i",
+                    'F' => "false",
+                    'G' => "?g",
+                    'N' => "null",
+                    'S' => "\"\"",
+                    'T' => "true",
+                }
+                .map(String::from);
+    
+                let implicit_print_values = choice((
+                    set_stmt(
+                        choice((
+                            short_multiplication,
+                            int, float,
+                            char_literal, string,
+                            value_ident, type_indicator,
+                            inner_block,
+                            invert,
+                            hardcoded,
+                        )),
+                        Some(false)
+                    ),
+                    set_stmt(
+                        choice((
+                            trigger_function,
+                        )),
+                        Some(true)
+                    )
+                ))
+                .map_with_span(SpwnCode::implicit_print);
+    
+                let explicit_print = just('$')
+                    .ignore_then(set_stmt(expression.clone(), Some(false)))
+                    .map_with_state(|SpwnCode { code, .. }, _, state: &mut State| {
+                        if state.is_stmt() {
+                            format!("$.print({code})")
+                        } else {
+                            let helper = state.add_helper(HelperFunction::Print);
+                            format!("{helper}({code})")
+                        }
+                    });
+    
+                let on_touch = expression.clone()
+                    .delimited_by(just('E'), closing)
+                    .map(|SpwnCode { code, .. }| {
+                        format!("on(touch(), {code})")
+                    });
+    
+                let infinite_loop = block.clone()
+                    .delimited_by(just('L'), closing)
+                    .map_with_state(|stmts, _, state| {
+                        format_loop("while true", stmts, state)
+                    });
+    
+                let explicit_print_values = choice((
+                    explicit_print, // set_stmt is called at definition
+                    set_stmt(on_touch, Some(false)),
+                    set_stmt(infinite_loop, None),
+                ))
+                .map_with_span(SpwnCode::explicit_print);
+    
+                implicit_print_values.or(explicit_print_values).labelled("value")
+            });
 
             // TODO add space " " handling
 
