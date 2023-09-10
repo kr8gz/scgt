@@ -84,18 +84,20 @@ Only in this order
 * ``[;] [ ]`` - ``Od`` adds an object
 * ``[ ] [$]`` - ``S`` equivalent to SPWN ``""``
 * ``[ ] [$]`` - ``T`` equivalent to SPWN ``true``
+* ``[;] [ ]`` - ``Wb`` starts a runtime infinite loop
+* ``[;] [$]`` - ``Xb`` equivalent to ``)x;b``
 
 ## Postfixes
 * ``[;] [ ]`` - ``i!v`` assigns a value and returns it
-* ``[;] [ ]`` - ``i@d`` declares a type ``@i`` with the members in ``d``
-    * *TODO this wont work*
-* ``[ ] [ ]`` - ``v?v`` ( ``v`` )? for ternary operator
-    * *TODO fix the else syntax, this wont work*
-    * *TODO `v? v` for no else?*
+* ``[;] [ ]`` - ``iTd`` declares a type ``@i`` with the members in ``d``
+* ``[ ] [ ]`` - ``v?vv`` for ternary operator
+* ``[ ] [ ]`` - ``vXv`` equivalent to ``v?vN``
 * ``[ ] [$]`` - ``v.i`` for accessing children
 * ``[;] [ ]`` - ``v(z`` calls a macro
     * ``z``: ``m`` ( ( ``i:`` )? ``v`` )*
     * ``i:v`` when calling to specify the arg that gets the value
+* ``[;] [ ]`` - ``v)z;b`` shortcut for named macro definition
+    * see macro definition entry [above](#values-and-prefixes)
 * ``[;] [$]`` - ``v]z`` for indexing/slicing
     * *TODO think of syntax for slice*
 * ``[;] [$]`` - ``v}v`` dictionarize / (multi-)zip?

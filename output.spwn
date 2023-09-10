@@ -6,11 +6,6 @@ _scgt_mul = (n: @number, v) => match v.type {
     else: v
 }
 
-_scgt_print = (v) {
-    $.print(v)
-    return v
-}
-
 // Initialize variables used
 let _scgt_loop_3 = null
 let _scgt_loop_4 = null

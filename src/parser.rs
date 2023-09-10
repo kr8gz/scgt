@@ -51,11 +51,19 @@ enum PrintBehavior {
     Explicit,
 }
 
-struct CodeVariables(String, Vec<String>);
+struct CodeVariables {
+    code: String,
+    helper_functions: Option<BTreeSet<HelperFunction>>,
+    variables: Option<BTreeSet<String>>,
+}
 
 impl CodeVariables {
     fn none(code: String) -> Self {
-        Self(code, Vec::new())
+        Self {
+            code,
+            helper_functions: None,
+            variables: None,
+        }
     }
 }
 
@@ -84,17 +92,21 @@ impl SpwnCode {
     }
 
     fn get_code(&self, is_stmt: bool, state: &mut State) -> String {
-        let CodeVariables(code, variables) = if is_stmt {
+        let code = if is_stmt {
             self.stmt.as_ref().unwrap_or(&self.expr)
         } else {
             &self.expr
         };
-        
-        for var in variables {
-            state.variables.insert(var.to_string());
+
+        if let Some(helper_functions) = &code.helper_functions {
+            state.helper_functions.extend(helper_functions.iter());
         }
 
-        code.to_string()
+        if let Some(variables) = &code.variables {
+            state.variables.extend(variables.iter().cloned());
+        }
+
+        code.code.to_string()
     }
 }
 
@@ -282,6 +294,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                     hardcoded,
                     trigger_function,
                 ))
+                // simple_implicit guarantees that the required variables and helper functions will be added
                 .map(CodeVariables::none)
                 .map_with_span(SpwnCode::simple_implicit);
     
@@ -289,14 +302,20 @@ fn parser<'a>() -> parser_type!('a, String) {
                     .ignore_then(expression.clone())
                     .map_with_state(|code: SpwnCode, span, state: &mut State| {
                         let code = code.get_code(false, state);
+
+                        let mut helpers = BTreeSet::new();
+                        let print = HelperFunction::Print;
+                        helpers.insert(print);
+
                         SpwnCode {
-                            expr: {
-                                let helper = state.add_helper(HelperFunction::Print);
-                                CodeVariables::none(format!("{helper}({code})"))
+                            expr: CodeVariables {
+                                code: format!("{}({code})", print.spwn_name()),
+                                helper_functions: Some(helpers),
+                                variables: None,
                             },
                             stmt: Some(CodeVariables::none(format!("$.print({code})"))),
                             span,
-                            print: PrintBehavior::Explicit
+                            print: PrintBehavior::Explicit,
                         }
                     });
 
@@ -305,14 +324,19 @@ fn parser<'a>() -> parser_type!('a, String) {
                     .map_with_state(|(name, code): (String, SpwnCode), span, state: &mut State| {
                         let code = code.get_code(false, state);
 
-                        let helper = state.add_helper(HelperFunction::Set);
-                        let expr = CodeVariables::none(format!("{helper}({name}, {code})"));
-                        let stmt = CodeVariables::none(format!("{name} = {code}"));
+                        let mut helpers = BTreeSet::new();
+                        let set = HelperFunction::Set;
+                        helpers.insert(set);
 
                         SpwnCode {
-                            expr, stmt: Some(stmt),
+                            expr: CodeVariables {
+                                code: format!("{}({name}, {code})", set.spwn_name()),
+                                helper_functions: Some(helpers),
+                                variables: None,
+                            },
+                            stmt: Some(CodeVariables::none(format!("{name} = {code}"))),
                             span,
-                            print: PrintBehavior::Explicit
+                            print: PrintBehavior::Explicit,
                         }
                     });
     
@@ -458,12 +482,16 @@ fn format_loop(start: &str, stmts: &Vec<SpwnCode>, span: SimpleSpan, state: &mut
         stmt = CodeVariables::none(code.clone());
         expr = CodeVariables::none(wrap_with_block(code, Some(state.get_indent())))
     } else {
+        stmt = CodeVariables::none(format!("{start} {{\n{}\n}}", format_stmts(stmts, state, false, None)));
+
         let arr_name = format!("_scgt_loop_{}", state.depth);
         let mut code = format_stmts(stmts, state, false, Some(&format!("{arr_name}.push(#)")));
         code = format!("let {arr_name} = []\n{start} {{\n{code}\n}}\nreturn {arr_name}");
-        
-        stmt = CodeVariables::none(format!("{start} {{\n{}\n}}", format_stmts(stmts, state, false, None)));
-        expr = CodeVariables(wrap_with_block(code, Some(state.get_indent())), vec![arr_name]);
+        code = wrap_with_block(code, Some(state.get_indent()));
+
+        let mut variables = BTreeSet::new();
+        variables.insert(arr_name);
+        expr = CodeVariables { code, helper_functions: None, variables: Some(variables) };
     }
 
     SpwnCode {
