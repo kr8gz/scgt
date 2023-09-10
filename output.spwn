@@ -1,8 +1,7 @@
-// Automatically generated helper functions
-_scgt_get = (v) => v // to counteract the clone bug in SPWN v0.8
-
 // Initialize variables used
 let a = null
 
-// a.b!2
-_scgt_get(a).b = 2
+// a.b!L;
+a.b = () {
+    while true { }
+} ()

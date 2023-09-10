@@ -93,11 +93,11 @@ impl SpwnCode {
         }
     }
 
-    fn get_code(&self, is_stmt: bool, state: &mut State) -> String {
-        let code = if is_stmt {
-            self.stmt.as_ref().unwrap_or(&self.expr)
-        } else {
+    fn get_code(&self, inline: bool, state: &mut State) -> String {
+        let code = if inline {
             &self.expr
+        } else {
+            self.stmt.as_ref().unwrap_or(&self.expr)
         };
 
         if let Some(helpers) = &code.helpers {
@@ -167,7 +167,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                     .then(value.clone())
                     .map_with_state(|(n, code): (String, SpwnCode), _, state: &mut State| {
                         let helper = state.add_helper(HelperFunction::Mul);
-                        format!("{helper}({n}, {})", code.get_code(false, state))
+                        format!("{helper}({n}, {})", code.get_code(true, state))
                     });
     
                 let char_literal = just('\'')
@@ -222,14 +222,6 @@ fn parser<'a>() -> parser_type!('a, String) {
                 ))
                 .map(|v: Vec<String>| format!("\"{}\"", v.into_iter().collect::<String>()));
     
-                let value_ident = ident
-                    .map_with_state(|name: String, _, state: &mut State| {
-                        let helper = state.add_helper(HelperFunction::Get);
-                        let code = format!("{helper}({name})");
-                        state.variables.insert(name);
-                        code
-                    });
-    
                 let type_indicator = just('@')
                     .ignore_then(ident)
                     .map(|name: String| format!("@{name}"));
@@ -238,14 +230,14 @@ fn parser<'a>() -> parser_type!('a, String) {
                     .delimited_by(just('('), closing)
                     .map_with_state(|stmts: Vec<SpwnCode>, _, state: &mut State| {
                         let code = format_stmts(&stmts, state, false, Some("return #"));
-                        wrap_with_block(code, None)
+                        wrap_with_block(code, false, state)
                     });
     
                 let invert = just('!')
                     .ignore_then(expression.clone())
                     .map_with_state(|code: SpwnCode, _, state: &mut State| {
                         let helper = state.add_helper(HelperFunction::Invert);
-                        format!("{helper}({})", code.get_code(false, state))
+                        format!("{helper}({})", code.get_code(true, state))
                     });
     
                 let trigger_function = block.clone()
@@ -294,7 +286,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                     short_multiplication,
                     int, float,
                     char_literal, string,
-                    value_ident, type_indicator,
+                    type_indicator,
                     inner_block,
                     invert,
                     loop_variables,
@@ -309,7 +301,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                 let explicit_print = just('$')
                     .ignore_then(expression.clone())
                     .map_with_state(|code: SpwnCode, span, state: &mut State| {
-                        let code = code.get_code(false, state);
+                        let code = code.get_code(true, state);
 
                         let mut helpers = BTreeSet::new();
                         let print = HelperFunction::Print;
@@ -330,7 +322,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                 let on_touch = expression.clone()
                     .delimited_by(just('E'), closing)
                     .map_with_state(|code: SpwnCode, _, state: &mut State| {
-                        format!("on(touch(), {})", code.get_code(false, state))
+                        format!("on(touch(), {})", code.get_code(true, state))
                     })
                     .map(CodeVariables::none)
                     .map_with_span(SpwnCode::simple_explicit);
@@ -351,11 +343,32 @@ fn parser<'a>() -> parser_type!('a, String) {
                         format_assign(name, code, span)
                     });
     
+                let value_ident = ident
+                    .map_with_state(|name: String, span, state: &mut State| {
+                        state.variables.insert(name.clone());
+
+                        let mut helpers = BTreeSet::new();
+                        let get = HelperFunction::Get;
+                        helpers.insert(get);
+
+                        SpwnCode {
+                            expr: CodeVariables {
+                                code: format!("{}({name})", get.spwn_name()),
+                                helpers: Some(helpers),
+                                variables: None,
+                            },
+                            stmt: Some(CodeVariables::none(name)),
+                            span,
+                            print: PrintBehavior::Explicit,
+                        }
+                    });
+    
                 let atom = choice((
                     explicit_print,
                     on_touch,
                     infinite_loop,
                     named_macro_no_args, named_macro_x_arg,
+                    value_ident,
                     implicit_print_values,
                 ));
 
@@ -375,7 +388,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                         Postfix {
                             span,
                             data: PostfixType::Assignment {
-                                expr: code.get_code(false, state),
+                                expr: code.get_code(true, state),
                             },
                         }
                     });
@@ -409,16 +422,12 @@ fn parser<'a>() -> parser_type!('a, String) {
                         let span = (value.span.start..postfix.span.end).into();
 
                         match postfix.data {
-                            PostfixType::Assignment { expr } => {
-                                format_assign(code, expr, span)
-                            }
+                            PostfixType::Assignment { expr } => format_assign(code, expr, span),
                             
-                            PostfixType::MemberAccess { name } => {
-                                SpwnCode::simple_implicit(
-                                    CodeVariables::none(format!("{code}.{name}")),
-                                    span,
-                                )
-                            }
+                            PostfixType::MemberAccess { name } => SpwnCode::simple_implicit(
+                                CodeVariables::none(format!("{code}.{name}")),
+                                span,
+                            ),
                             
                             PostfixType::MacroCallNoArgs => {
                                 let mut helpers = BTreeSet::new();
@@ -520,10 +529,10 @@ fn format_stmts(
                     .collect::<String>();
 
                 let code = match return_fmt {
-                    Some(r) if i == last_index => r.replace('#', &code.get_code(false, state)),
+                    Some(r) if i == last_index => r.replace('#', &code.get_code(true, state)),
                     _ => match code.print {
-                        PrintBehavior::Explicit => code.get_code(true, state).to_string(),
-                        PrintBehavior::Implicit => format!("$.print({})", code.get_code(false, state)),
+                        PrintBehavior::Explicit => code.get_code(false, state).to_string(),
+                        PrintBehavior::Implicit => format!("$.print({})", code.get_code(true, state)),
                     }
                 }
                 .lines()
@@ -538,11 +547,11 @@ fn format_stmts(
     }
 }
 
-fn wrap_with_block(mut code: String, indent: Option<String>) -> String {
-    if let Some(indent) = indent {
+fn wrap_with_block(mut code: String, indent: bool, state: &mut State) -> String {
+    if indent {
         code = code
             .lines()
-            .map(|line| format!("{indent}{line}"))
+            .map(|line| format!("{}{line}", state.get_indent()))
             .collect::<Vec<_>>()
             .join("\n");
     }
@@ -550,21 +559,26 @@ fn wrap_with_block(mut code: String, indent: Option<String>) -> String {
     format!("() {{\n{code}\n}} ()")
 }
 
-fn format_loop(start: &str, stmts: &Vec<SpwnCode>, span: SimpleSpan, state: &mut State) -> SpwnCode {
+fn format_loop(
+    start: &str,
+    stmts: &Vec<SpwnCode>,
+    span: SimpleSpan,
+    state: &mut State,
+) -> SpwnCode {
     let expr;
     let stmt;
 
     if stmts.is_empty() {
         let code = format!("{start} {{ }}");
         stmt = CodeVariables::none(code.clone());
-        expr = CodeVariables::none(wrap_with_block(code, Some(state.get_indent())))
+        expr = CodeVariables::none(wrap_with_block(code, true, state))
     } else {
         stmt = CodeVariables::none(format!("{start} {{\n{}\n}}", format_stmts(stmts, state, false, None)));
 
         let arr_name = format!("_scgt_loop_{}", state.depth);
         let mut code = format_stmts(stmts, state, false, Some(&format!("{arr_name}.push(#)")));
         code = format!("let {arr_name} = []\n{start} {{\n{code}\n}}\nreturn {arr_name}");
-        code = wrap_with_block(code, Some(state.get_indent()));
+        code = wrap_with_block(code, true, state);
 
         let mut variables = BTreeSet::new();
         variables.insert(arr_name);
