@@ -20,7 +20,7 @@ struct State<'a> {
 
     indent_size: usize,
     
-    levels: Vec<Option<bool>>,
+    depth: usize,
 }
 
 impl<'a> State<'a> {
@@ -32,7 +32,7 @@ impl<'a> State<'a> {
 
             indent_size,
 
-            levels: Vec::new(),
+            depth: 1,
         }
     }
 
@@ -44,15 +44,6 @@ impl<'a> State<'a> {
     fn get_indent(&self) -> String {
         " ".repeat(self.indent_size)
     }
-
-    fn is_stmt(&self) -> bool {
-        self.levels
-            .iter()
-            .rev()
-            .find_map(Option::as_ref)
-            .copied()
-            .unwrap_or(true)
-    }
 }
 
 enum PrintBehavior {
@@ -60,19 +51,50 @@ enum PrintBehavior {
     Explicit,
 }
 
+struct CodeVariables(String, Vec<String>);
+
+impl CodeVariables {
+    fn none(code: String) -> Self {
+        Self(code, Vec::new())
+    }
+}
+
 struct SpwnCode {
-    code: String,
+    expr: CodeVariables,
+    stmt: Option<CodeVariables>,
     span: SimpleSpan,
     print: PrintBehavior,
 }
 
 impl SpwnCode {
-    fn implicit_print(code: String, span: SimpleSpan) -> Self {
-        Self { code, span, print: PrintBehavior::Implicit }
+    fn simple_implicit(code: CodeVariables, span: SimpleSpan) -> Self {
+        SpwnCode {
+            expr: code, stmt: None,
+            span,
+            print: PrintBehavior::Implicit,
+        }
     }
 
-    fn explicit_print(code: String, span: SimpleSpan) -> Self {
-        Self { code, span, print: PrintBehavior::Explicit }
+    fn simple_explicit(code: CodeVariables, span: SimpleSpan) -> Self {
+        SpwnCode {
+            expr: code, stmt: None,
+            span,
+            print: PrintBehavior::Explicit,
+        }
+    }
+
+    fn get_code(&self, is_stmt: bool, state: &mut State) -> String {
+        let CodeVariables(code, variables) = if is_stmt {
+            self.stmt.as_ref().unwrap_or(&self.expr)
+        } else {
+            &self.expr
+        };
+        
+        for var in variables {
+            state.variables.insert(var.to_string());
+        }
+
+        code.to_string()
     }
 }
 
@@ -83,6 +105,21 @@ pub fn parse(code: &str, indent_size: usize) -> ParseResult<String, Err<'_>> {
 
 fn parser<'a>() -> parser_type!('a, String) {
     let global = recursive(|block| {
+        let block = empty()
+            .map_with_state(move |_, _, state: &mut State| {
+                state.depth += 1;
+            })
+            .then(block)
+            // set to previous state in ALL CASES
+            .map_with_state(|((), out), _, state: &mut State| {
+                state.depth -= 1;
+                out
+            })
+            .map_err_with_state(|err, _, state: &mut State| {
+                state.depth -= 1;
+                err
+            });
+
         let ident = one_of("abcdefghijklmnopqrstuvwxyz")
             .repeated().at_least(1)
             .collect::<String>()
@@ -102,6 +139,8 @@ fn parser<'a>() -> parser_type!('a, String) {
         ));
 
         let expression = recursive(|expression| {
+            // let expression = set_stmt(expression, false);
+
             let value = recursive(|value| {
                 let int = text::int(10).map(String::from);
 
@@ -113,14 +152,14 @@ fn parser<'a>() -> parser_type!('a, String) {
     
                 let short_multiplication = int.or(float)
                     .then(value.clone())
-                    .map_with_state(|(n, SpwnCode { code, .. }), _, state: &mut State| {
+                    .map_with_state(|(n, code): (String, SpwnCode), _, state: &mut State| {
                         let helper = state.add_helper(HelperFunction::Mul);
-                        format!("{helper}({n}, {code})")
+                        format!("{helper}({n}, {})", code.get_code(false, state))
                     });
     
                 let char_literal = just('\'')
                     .ignore_then(any())
-                    .map(|c| format!("\"{c}\""));
+                    .map(|c: char| format!("\"{c}\""));
     
                 let string_char = choice((
                     // SCGT escapes
@@ -168,9 +207,9 @@ fn parser<'a>() -> parser_type!('a, String) {
                         .collect::<Vec<_>>()
                         .delimited_by(just('\\'), just('`').ignored().or(end()))
                 ))
-                .map(|v| format!("\"{}\"", v.into_iter().collect::<String>()));
+                .map(|v: Vec<String>| format!("\"{}\"", v.into_iter().collect::<String>()));
     
-                let value_ident = ident.map_with_state(|name, _, state: &mut State| {
+                let value_ident = ident.map_with_state(|name: String, _, state: &mut State| {
                     let helper = state.add_helper(HelperFunction::Get);
                     let code = format!("{helper}({name})");
                     state.variables.insert(name);
@@ -179,27 +218,27 @@ fn parser<'a>() -> parser_type!('a, String) {
     
                 let type_indicator = just('@')
                     .ignore_then(ident)
-                    .map(|name| format!("@{name}"));
+                    .map(|name: String| format!("@{name}"));
     
                 let inner_block = block.clone()
                     .delimited_by(just('('), closing)
-                    .map_with_state(|stmts, _, state: &mut State| {
-                        let code = format_stmts(stmts, state, false, Some("return #"));
+                    .map_with_state(|stmts: Vec<SpwnCode>, _, state: &mut State| {
+                        let code = format_stmts(&stmts, state, false, Some("return #"));
                         wrap_with_block(code, None)
                     });
     
                 let invert = just('!')
                     .ignore_then(expression.clone())
-                    .map_with_state(|SpwnCode { code, .. }, _, state: &mut State| {
+                    .map_with_state(|code: SpwnCode, _, state: &mut State| {
                         let helper = state.add_helper(HelperFunction::Invert);
-                        format!("{helper}({code})")
+                        format!("{helper}({})", code.get_code(false, state))
                     });
     
                 let trigger_function = block.clone()
                     .delimited_by(just('}'), closing)
-                    .map_with_state(|stmts, _, state: &mut State| {
+                    .map_with_state(|stmts: Vec<SpwnCode>, _, state: &mut State| {
                         // TODO check back here when `-> return`
-                        let code = format_stmts(stmts, state, false, None);
+                        let code = format_stmts(&stmts, state, false, None);
                         format!("!{{\n{code}\n}}")
                     });
 
@@ -212,9 +251,9 @@ fn parser<'a>() -> parser_type!('a, String) {
     
                 let macro_definition_no_args = block.clone()
                     .delimited_by(just('M'), closing)
-                    .map_with_state(|stmts, _, state: &mut State| {
+                    .map_with_state(|stmts: Vec<SpwnCode>, _, state: &mut State| {
                         // TODO check back here when `-> return`
-                        let code = format_stmts(stmts, state, false, Some("return #"));
+                        let code = format_stmts(&stmts, state, false, Some("return #"));
                         format!("() {{\n{code}\n}}")
                     });
 
@@ -232,76 +271,71 @@ fn parser<'a>() -> parser_type!('a, String) {
                 .map(String::from);
     
                 let implicit_print_values = choice((
-                    set_stmt(
-                        choice((
-                            short_multiplication,
-                            int, float,
-                            char_literal, string,
-                            value_ident, type_indicator,
-                            inner_block,
-                            invert,
-                            loop_variables,
-                            macro_definition_no_args,
-                            hardcoded,
-                        )),
-                        Some(false)
-                    ),
-                    set_stmt(
-                        choice((
-                            trigger_function,
-                        )),
-                        Some(true)
-                    )
+                    short_multiplication,
+                    int, float,
+                    char_literal, string,
+                    value_ident, type_indicator,
+                    inner_block,
+                    invert,
+                    loop_variables,
+                    macro_definition_no_args,
+                    hardcoded,
+                    trigger_function,
                 ))
-                .map_with_span(SpwnCode::implicit_print);
+                .map(CodeVariables::none)
+                .map_with_span(SpwnCode::simple_implicit);
     
                 let explicit_print = just('$')
-                    .ignore_then(set_stmt(expression.clone(), Some(false)))
-                    .map_with_state(|SpwnCode { code, .. }, _, state: &mut State| {
-                        if state.is_stmt() {
-                            format!("$.print({code})")
-                        } else {
-                            let helper = state.add_helper(HelperFunction::Print);
-                            format!("{helper}({code})")
+                    .ignore_then(expression.clone())
+                    .map_with_state(|code: SpwnCode, span, state: &mut State| {
+                        let code = code.get_code(false, state);
+                        SpwnCode {
+                            expr: {
+                                let helper = state.add_helper(HelperFunction::Print);
+                                CodeVariables::none(format!("{helper}({code})"))
+                            },
+                            stmt: Some(CodeVariables::none(format!("$.print({code})"))),
+                            span,
+                            print: PrintBehavior::Explicit
                         }
                     });
 
                 let assignment = ident
-                    .then(
-                        set_stmt(expression.clone(), Some(false))
-                            .delimited_by(just('!'), closing)
-                    )
-                    .map_with_state(|(name, SpwnCode { code, .. }), _, state: &mut State| {
-                        let code = if state.is_stmt() {
-                            format!("{name} = {code}")
-                        } else {
-                            let helper = state.add_helper(HelperFunction::Set);
-                            format!("{helper}({name}, {code})")
-                        };
-                        state.variables.insert(name);
-                        code
+                    .then(expression.clone().delimited_by(just('!'), closing))
+                    .map_with_state(|(name, code): (String, SpwnCode), span, state: &mut State| {
+                        let code = code.get_code(false, state);
+
+                        let helper = state.add_helper(HelperFunction::Set);
+                        let expr = CodeVariables::none(format!("{helper}({name}, {code})"));
+                        let stmt = CodeVariables::none(format!("{name} = {code}"));
+
+                        SpwnCode {
+                            expr, stmt: Some(stmt),
+                            span,
+                            print: PrintBehavior::Explicit
+                        }
                     });
     
                 let on_touch = expression.clone()
                     .delimited_by(just('E'), closing)
-                    .map(|SpwnCode { code, .. }| {
-                        format!("on(touch(), {code})")
-                    });
+                    .map_with_state(|code: SpwnCode, _, state: &mut State| {
+                        format!("on(touch(), {})", code.get_code(false, state))
+                    })
+                    .map(CodeVariables::none)
+                    .map_with_span(SpwnCode::simple_explicit);
     
                 let infinite_loop = block.clone()
                     .delimited_by(just('L'), closing)
-                    .map_with_state(|stmts, _, state| {
-                        format_loop("while true", stmts, state)
+                    .map_with_state(|stmts: Vec<SpwnCode>, span, state: &mut State| {
+                        format_loop("while true", &stmts, span, state)
                     });
     
                 let explicit_print_values = choice((
-                    // set_stmt called at definitions
                     explicit_print,
                     assignment,
-                    set_stmt(on_touch, Some(false)),
-                    set_stmt(infinite_loop, None),
-                ))
-                .map_with_span(SpwnCode::explicit_print);
+                    on_touch,
+                    infinite_loop,
+                ));
     
                 explicit_print_values.or(implicit_print_values).labelled("value")
             });
@@ -331,8 +365,8 @@ fn parser<'a>() -> parser_type!('a, String) {
         }),
 
         global
-            .map_with_state(|stmts, _, state: &mut State| {
-                let mut code = format_stmts(stmts, state, true, None);
+            .map_with_state(|stmts: Vec<SpwnCode>, _, state: &mut State| {
+                let mut code = format_stmts(&stmts, state, true, None);
 
                 if !state.variables.is_empty() {
                     code = format!("{}\n{}\n{code}",
@@ -362,26 +396,9 @@ fn parser<'a>() -> parser_type!('a, String) {
     ))
 }
 
-fn set_stmt<'a, T>(parser: parser_type!('a, T), is_stmt: Option<bool>) -> parser_type!('a, T) {
-    empty()
-        .map_with_state(move |_, _, state: &mut State| {
-            state.levels.push(is_stmt)
-        })
-        .then(parser)
-        // set to previous state in ALL CASES
-        .map_err_with_state(|err, _, state: &mut State| {
-            state.levels.pop();
-            err
-        })
-        .map_with_state(|((), code), _, state: &mut State| {
-            state.levels.pop();
-            code
-        })
-}
-
 /// `return_fmt` replaces `#` with last value
 fn format_stmts(
-    stmts: Vec<SpwnCode>,
+    stmts: &Vec<SpwnCode>,
     state: &mut State,
     global: bool,
     return_fmt: Option<&str>,
@@ -393,19 +410,19 @@ fn format_stmts(
         let indent = if global { String::new() } else { state.get_indent() };
 
         stmts
-            .into_iter()
+            .iter()
             .enumerate()
-            .map(|(i, SpwnCode { code, span, print })| {
-                let comment = state.source[span.start..span.end]
+            .map(|(i, code)| {
+                let comment = state.source[code.span.start..code.span.end]
                     .lines()
                     .map(|line| format!("{indent}// {line}\n"))
                     .collect::<String>();
 
                 let code = match return_fmt {
-                    Some(r) if i == last_index => r.replace('#', &code),
-                    _ => match print {
-                        PrintBehavior::Explicit => code,
-                        PrintBehavior::Implicit => format!("$.print({code})"),
+                    Some(r) if i == last_index => r.replace('#', &code.get_code(false, state)),
+                    _ => match code.print {
+                        PrintBehavior::Explicit => code.get_code(true, state).to_string(),
+                        PrintBehavior::Implicit => format!("$.print({})", code.get_code(false, state)),
                     }
                 }
                 .lines()
@@ -432,23 +449,26 @@ fn wrap_with_block(mut code: String, indent: Option<String>) -> String {
     format!("() {{\n{code}\n}} ()")
 }
 
-fn format_loop(start: &str, stmts: Vec<SpwnCode>, state: &mut State) -> String {
-    let mut code;
+fn format_loop(start: &str, stmts: &Vec<SpwnCode>, span: SimpleSpan, state: &mut State) -> SpwnCode {
+    let expr;
+    let stmt;
+
     if stmts.is_empty() {
-        code = format!("{start} {{ }}")
-    } else if state.is_stmt() {
-        code = format_stmts(stmts, state, false, None);
-        code = format!("{start} {{\n{code}\n}}");
+        let code = format!("{start} {{ }}");
+        stmt = CodeVariables::none(code.clone());
+        expr = CodeVariables::none(wrap_with_block(code, Some(state.get_indent())))
     } else {
-        let arr_name = format!("_scgt_loop_{}", state.levels.len());
-        code = format_stmts(stmts, state, false, Some(&format!("{arr_name}.push(#)")));
+        let arr_name = format!("_scgt_loop_{}", state.depth);
+        let mut code = format_stmts(stmts, state, false, Some(&format!("{arr_name}.push(#)")));
         code = format!("let {arr_name} = []\n{start} {{\n{code}\n}}\nreturn {arr_name}");
-        state.variables.insert(arr_name);
+        
+        stmt = CodeVariables::none(format!("{start} {{\n{}\n}}", format_stmts(stmts, state, false, None)));
+        expr = CodeVariables(wrap_with_block(code, Some(state.get_indent())), vec![arr_name]);
     }
 
-    if state.is_stmt() {
-        code
-    } else {
-        wrap_with_block(code, Some(state.get_indent()))
+    SpwnCode {
+        expr, stmt: Some(stmt),
+        span,
+        print: PrintBehavior::Explicit,
     }
 }
