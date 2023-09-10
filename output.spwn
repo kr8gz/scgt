@@ -1,18 +1,13 @@
 // Automatically generated helper functions
 _scgt_get = (v) => v // to counteract the clone bug in SPWN v0.8
 
-_scgt_invert = (v) => match v.type {
-    == @number: -v,
-    == @bool: !v,
-    in [@string, @array]: v.reverse(),
-    else: v
+_scgt_set = (&t, v) {
+    t = v
+    return v
 }
 
 // Initialize variables used
 let a = null
 
-// a.b
-$.print(_scgt_get(a).b)
-
-// !2
-$.print(_scgt_invert(2))
+// a.b!2
+_scgt_set(_scgt_get(a).b, 2)

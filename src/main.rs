@@ -4,7 +4,7 @@ use clap::Parser;
 
 mod error;
 mod parser;
-mod helper_functions;
+mod helpers;
 
 #[derive(Parser, Debug)]
 #[command(author = "kr8gz", verbatim_doc_comment)]

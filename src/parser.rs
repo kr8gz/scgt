@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use chumsky::prelude::*;
 
-use crate::helper_functions::*;
+use crate::helpers::*;
 
 type Err<'a> = Rich<'a, char>;
 type Extra<'a> = extra::Full<Err<'a>, State<'a>, ()>;
@@ -16,7 +16,7 @@ macro_rules! parser_type {
 }
 
 struct State<'a> {
-    helper_functions: BTreeSet<HelperFunction>,
+    helpers: BTreeSet<HelperFunction>,
     variables: BTreeSet<String>,
     source: &'a str,
 
@@ -28,7 +28,7 @@ struct State<'a> {
 impl<'a> State<'a> {
     fn new(source: &'a str, indent_size: usize) -> Self {
         Self {
-            helper_functions: BTreeSet::new(),
+            helpers: BTreeSet::new(),
             variables: BTreeSet::new(),
             source,
 
@@ -39,7 +39,7 @@ impl<'a> State<'a> {
     }
 
     fn add_helper(&mut self, helper: HelperFunction) -> &'static str {
-        self.helper_functions.insert(helper);
+        self.helpers.insert(helper);
         helper.spwn_name()
     }
 
@@ -55,7 +55,7 @@ enum PrintBehavior {
 
 struct CodeVariables {
     code: String,
-    helper_functions: Option<BTreeSet<HelperFunction>>,
+    helpers: Option<BTreeSet<HelperFunction>>,
     variables: Option<BTreeSet<String>>,
 }
 
@@ -63,7 +63,7 @@ impl CodeVariables {
     fn none(code: String) -> Self {
         Self {
             code,
-            helper_functions: None,
+            helpers: None,
             variables: None,
         }
     }
@@ -100,8 +100,8 @@ impl SpwnCode {
             &self.expr
         };
 
-        if let Some(helper_functions) = &code.helper_functions {
-            state.helper_functions.extend(helper_functions.iter());
+        if let Some(helpers) = &code.helpers {
+            state.helpers.extend(helpers.iter());
         }
 
         if let Some(variables) = &code.variables {
@@ -154,22 +154,6 @@ fn parser<'a>() -> parser_type!('a, String) {
 
         let expression = recursive(|expression| {
             let value = recursive(|value| {
-                // TODO fix stuck
-                // let ident = choice((
-                //     ident,
-                //     ident.or(
-                //         value.clone().map_with_state(|code: SpwnCode, _, state: &mut State| {
-                //             code.get_code(false, state)
-                //         })
-                //     ).foldl(
-                //         just('.').ignore_then(ident).repeated().at_least(1),
-                //         |value: String, postfix: String| {
-                //             format!("{value}.{postfix}")
-                //         }
-                //     ),
-                //     // TODO list and dictionary and string access and stuff probably too
-                // ));
-
                 let int = text::int(10).map(String::from);
 
                 let float = text::int(10).slice().or_not()
@@ -238,7 +222,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                 ))
                 .map(|v: Vec<String>| format!("\"{}\"", v.into_iter().collect::<String>()));
     
-                let value_ident = ident.clone()
+                let value_ident = ident
                     .map_with_state(|name: String, _, state: &mut State| {
                         let helper = state.add_helper(HelperFunction::Get);
                         let code = format!("{helper}({name})");
@@ -247,7 +231,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                     });
     
                 let type_indicator = just('@')
-                    .ignore_then(ident.clone())
+                    .ignore_then(ident)
                     .map(|name: String| format!("@{name}"));
     
                 let inner_block = block.clone()
@@ -334,19 +318,13 @@ fn parser<'a>() -> parser_type!('a, String) {
                         SpwnCode {
                             expr: CodeVariables {
                                 code: format!("{}({code})", print.spwn_name()),
-                                helper_functions: Some(helpers),
+                                helpers: Some(helpers),
                                 variables: None,
                             },
                             stmt: Some(CodeVariables::none(format!("$.print({code})"))),
                             span,
                             print: PrintBehavior::Explicit,
                         }
-                    });
-
-                let assignment = ident.clone()
-                    .then(expression.clone().delimited_by(just('!'), closing))
-                    .map_with_state(|(name, code): (String, SpwnCode), span, state: &mut State| {
-                        format_assign(name, code.get_code(false, state), span)
                     });
     
                 let on_touch = expression.clone()
@@ -363,68 +341,113 @@ fn parser<'a>() -> parser_type!('a, String) {
                         format_loop("while true", &stmts, span, state)
                     });
 
-                let named_macro_no_args = ident.clone().then(macro_def_no_args)
+                let named_macro_no_args = ident.then(macro_def_no_args)
                     .map_with_span(|(name, code): (String, String), span| {
                         format_assign(name, code, span)
                     });
 
-                let named_macro_x_arg = ident.clone().then(macro_def_x_arg)
+                let named_macro_x_arg = ident.then(macro_def_x_arg)
                     .map_with_span(|(name, code): (String, String), span| {
                         format_assign(name, code, span)
                     });
     
                 let atom = choice((
                     explicit_print,
-                    assignment,
                     on_touch,
                     infinite_loop,
                     named_macro_no_args, named_macro_x_arg,
                     implicit_print_values,
                 ));
 
-                let member_access = just('.')
-                    .ignore_then(ident.clone())
-                    .map(|name: String| format!("#.{name}"))
-                    .map(CodeVariables::none)
-                    .map_with_span(SpwnCode::simple_implicit);
+                struct Postfix {
+                    span: SimpleSpan,
+                    data: PostfixType,
+                }
 
-                let macro_call_no_args = just('M').ignored()
-                    .map_with_span(|_, span| {
-                        let mut helpers = BTreeSet::new();
-                        let call = HelperFunction::Call;
-                        helpers.insert(call);
+                enum PostfixType {
+                    Assignment { expr: String },
+                    MemberAccess { name: String },
+                    MacroCallNoArgs,
+                }
 
-                        SpwnCode {
-                            expr: CodeVariables {
-                                code: format!("{}(#)", call.spwn_name()),
-                                helper_functions: Some(helpers),
-                                variables: None,
-                            },
-                            stmt: None,
+                let assignment = expression.clone().delimited_by(just('!'), closing)
+                    .map_with_state(|code: SpwnCode, span, state: &mut State| {
+                        Postfix {
                             span,
-                            print: PrintBehavior::Explicit,
+                            data: PostfixType::Assignment {
+                                expr: code.get_code(false, state),
+                            },
                         }
                     });
 
-                atom.foldl_with_state(
+                let member_access = just('.')
+                    .ignore_then(ident)
+                    .map_with_span(|name: String, span| {
+                        Postfix {
+                            span,
+                            data: PostfixType::MemberAccess { name },
+                        }
+                    });
+
+                let macro_call_no_args = just('M').ignored()
+                    .map_with_span(|_, span| {
+                        Postfix {
+                            span,
+                            data: PostfixType::MacroCallNoArgs,
+                        }
+                    });
+
+                let postfixes = atom.foldl_with_state(
                     choice((
-                        member_access, // TODO member_access should be able to be assigned to like ident
+                        assignment,
+                        member_access,
                         macro_call_no_args,
                     ))
                     .repeated(),
-                    |value: SpwnCode, postfix: SpwnCode, state: &mut State| {
-                        let code = postfix.get_code(false, state)
-                            .replace('#', &value.get_code(false, state));
+                    |value: SpwnCode, postfix: Postfix, state: &mut State| {
+                        let code = value.get_code(false, state);
+                        let postfix = match postfix.data {
+                            PostfixType::Assignment { expr } => {
+                                format_assign(code, expr, postfix.span)
+                            }
+                            
+                            PostfixType::MemberAccess { name } => {
+                                SpwnCode::simple_implicit(
+                                    CodeVariables::none(format!("{code}.{name}")),
+                                    postfix.span,
+                                )
+                            }
+                            
+                            PostfixType::MacroCallNoArgs => {
+                                let mut helpers = BTreeSet::new();
+                                let call = HelperFunction::Call;
+                                helpers.insert(call);
+                                SpwnCode::simple_explicit(
+                                    CodeVariables {
+                                        code: format!("{}({code})", call.spwn_name()),
+                                        helpers: Some(helpers),
+                                        variables: None,
+                                    },
+                                    postfix.span,
+                                )
+                            }
+                        };
 
                         SpwnCode {
-                            expr: CodeVariables { code, helper_functions: None, variables: None },
+                            expr: CodeVariables {
+                                code: postfix.get_code(false, state),
+                                helpers: None,
+                                variables: None,
+                            },
                             stmt: None,
                             span: (value.span.start..postfix.span.end).into(),
                             print: postfix.print,
                         }
-                    }
-                )
-                .labelled("value")
+                    },
+                );
+
+                postfixes
+                    .labelled("value")
             });
 
             // TODO add space " " handling
@@ -466,10 +489,10 @@ fn parser<'a>() -> parser_type!('a, String) {
                     );
                 }
 
-                if !state.helper_functions.is_empty() {
+                if !state.helpers.is_empty() {
                     code = format!("{}\n{}{code}",
                         "// Automatically generated helper functions",
-                        state.helper_functions
+                        state.helpers
                             .iter()
                             .rfold(String::new(), |rest, helper| {
                                 let code = helper.spwn_impl().replace("    ", &state.get_indent());
@@ -553,7 +576,7 @@ fn format_loop(start: &str, stmts: &Vec<SpwnCode>, span: SimpleSpan, state: &mut
 
         let mut variables = BTreeSet::new();
         variables.insert(arr_name);
-        expr = CodeVariables { code, helper_functions: None, variables: Some(variables) };
+        expr = CodeVariables { code, helpers: None, variables: Some(variables) };
     }
 
     SpwnCode {
@@ -563,24 +586,30 @@ fn format_loop(start: &str, stmts: &Vec<SpwnCode>, span: SimpleSpan, state: &mut
     }
 }
 
-fn format_assign(name: String, code: String, span: SimpleSpan) -> SpwnCode {
+fn format_assign(target: String, value: String, span: SimpleSpan) -> SpwnCode {
     let mut helpers = BTreeSet::new();
     let set = HelperFunction::Set;
     helpers.insert(set);
 
-    let mut variables = BTreeSet::new();
-    variables.insert(name.clone()); 
+    let variables = text::ident::<_, _, extra::Default>()
+        .parse(target.as_str())
+        .output()
+        .map(|target| {
+            let mut variables = BTreeSet::new();
+            variables.insert(target.to_string());
+            variables
+        });
 
     SpwnCode {
         expr: CodeVariables {
-            code: format!("{}({name}, {code})", set.spwn_name()),
-            helper_functions: Some(helpers),
-            variables: Some(variables.clone()),
+            code: format!("{}({target}, {value})", set.spwn_name()),
+            helpers: Some(helpers),
+            variables: variables.clone(),
         },
         stmt: Some(CodeVariables {
-            code: format!("{name} = {code}"),
-            helper_functions: None,
-            variables: Some(variables),
+            code: format!("{target} = {value}"),
+            helpers: None,
+            variables,
         }),
         span,
         print: PrintBehavior::Explicit,
