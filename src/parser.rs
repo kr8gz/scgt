@@ -1,3 +1,5 @@
+/// throughout this file '#' will be used as a placeholder for generated code to be inserted
+
 use std::collections::BTreeSet;
 
 use chumsky::prelude::*;
@@ -152,6 +154,22 @@ fn parser<'a>() -> parser_type!('a, String) {
 
         let expression = recursive(|expression| {
             let value = recursive(|value| {
+                // TODO fix stuck
+                // let ident = choice((
+                //     ident,
+                //     ident.or(
+                //         value.clone().map_with_state(|code: SpwnCode, _, state: &mut State| {
+                //             code.get_code(false, state)
+                //         })
+                //     ).foldl(
+                //         just('.').ignore_then(ident).repeated().at_least(1),
+                //         |value: String, postfix: String| {
+                //             format!("{value}.{postfix}")
+                //         }
+                //     ),
+                //     // TODO list and dictionary and string access and stuff probably too
+                // ));
+
                 let int = text::int(10).map(String::from);
 
                 let float = text::int(10).slice().or_not()
@@ -161,6 +179,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                     .map(|(bef, aft)| format!("{}.{}", bef.unwrap_or("0"), aft.unwrap_or("0")));
     
                 let short_multiplication = int.or(float)
+                    .then_ignore(none_of("ABCDEFGLMNOSWX").rewind())
                     .then(value.clone())
                     .map_with_state(|(n, code): (String, SpwnCode), _, state: &mut State| {
                         let helper = state.add_helper(HelperFunction::Mul);
@@ -219,15 +238,16 @@ fn parser<'a>() -> parser_type!('a, String) {
                 ))
                 .map(|v: Vec<String>| format!("\"{}\"", v.into_iter().collect::<String>()));
     
-                let value_ident = ident.map_with_state(|name: String, _, state: &mut State| {
-                    let helper = state.add_helper(HelperFunction::Get);
-                    let code = format!("{helper}({name})");
-                    state.variables.insert(name);
-                    code
-                });
+                let value_ident = ident.clone()
+                    .map_with_state(|name: String, _, state: &mut State| {
+                        let helper = state.add_helper(HelperFunction::Get);
+                        let code = format!("{helper}({name})");
+                        state.variables.insert(name);
+                        code
+                    });
     
                 let type_indicator = just('@')
-                    .ignore_then(ident)
+                    .ignore_then(ident.clone())
                     .map(|name: String| format!("@{name}"));
     
                 let inner_block = block.clone()
@@ -323,7 +343,7 @@ fn parser<'a>() -> parser_type!('a, String) {
                         }
                     });
 
-                let assignment = ident
+                let assignment = ident.clone()
                     .then(expression.clone().delimited_by(just('!'), closing))
                     .map_with_state(|(name, code): (String, SpwnCode), span, state: &mut State| {
                         format_assign(name, code.get_code(false, state), span)
@@ -343,12 +363,12 @@ fn parser<'a>() -> parser_type!('a, String) {
                         format_loop("while true", &stmts, span, state)
                     });
 
-                let named_macro_no_args = ident.then(macro_def_no_args)
+                let named_macro_no_args = ident.clone().then(macro_def_no_args)
                     .map_with_span(|(name, code): (String, String), span| {
                         format_assign(name, code, span)
                     });
 
-                let named_macro_x_arg = ident.then(macro_def_x_arg)
+                let named_macro_x_arg = ident.clone().then(macro_def_x_arg)
                     .map_with_span(|(name, code): (String, String), span| {
                         format_assign(name, code, span)
                     });
@@ -362,9 +382,49 @@ fn parser<'a>() -> parser_type!('a, String) {
                     implicit_print_values,
                 ));
 
-                // fold postfixes
+                let member_access = just('.')
+                    .ignore_then(ident.clone())
+                    .map(|name: String| format!("#.{name}"))
+                    .map(CodeVariables::none)
+                    .map_with_span(SpwnCode::simple_implicit);
 
-                atom
+                let macro_call_no_args = just('M').ignored()
+                    .map_with_span(|_, span| {
+                        let mut helpers = BTreeSet::new();
+                        let call = HelperFunction::Call;
+                        helpers.insert(call);
+
+                        SpwnCode {
+                            expr: CodeVariables {
+                                code: format!("{}(#)", call.spwn_name()),
+                                helper_functions: Some(helpers),
+                                variables: None,
+                            },
+                            stmt: None,
+                            span,
+                            print: PrintBehavior::Explicit,
+                        }
+                    });
+
+                atom.foldl_with_state(
+                    choice((
+                        member_access, // TODO member_access should be able to be assigned to like ident
+                        macro_call_no_args,
+                    ))
+                    .repeated(),
+                    |value: SpwnCode, postfix: SpwnCode, state: &mut State| {
+                        let code = postfix.get_code(false, state)
+                            .replace('#', &value.get_code(false, state));
+
+                        SpwnCode {
+                            expr: CodeVariables { code, helper_functions: None, variables: None },
+                            stmt: None,
+                            span: (value.span.start..postfix.span.end).into(),
+                            print: postfix.print,
+                        }
+                    }
+                )
+                .labelled("value")
             });
 
             // TODO add space " " handling
@@ -423,7 +483,6 @@ fn parser<'a>() -> parser_type!('a, String) {
     ))
 }
 
-/// `return_fmt` replaces `#` with last value
 fn format_stmts(
     stmts: &Vec<SpwnCode>,
     state: &mut State,
@@ -509,13 +568,20 @@ fn format_assign(name: String, code: String, span: SimpleSpan) -> SpwnCode {
     let set = HelperFunction::Set;
     helpers.insert(set);
 
+    let mut variables = BTreeSet::new();
+    variables.insert(name.clone()); 
+
     SpwnCode {
         expr: CodeVariables {
             code: format!("{}({name}, {code})", set.spwn_name()),
             helper_functions: Some(helpers),
-            variables: None,
+            variables: Some(variables.clone()),
         },
-        stmt: Some(CodeVariables::none(format!("{name} = {code}"))),
+        stmt: Some(CodeVariables {
+            code: format!("{name} = {code}"),
+            helper_functions: None,
+            variables: Some(variables),
+        }),
         span,
         print: PrintBehavior::Explicit,
     }

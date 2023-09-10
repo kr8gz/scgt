@@ -118,8 +118,8 @@ Only in this order
 * ``B``: ``@block``
 * ``C``: ``@color``
 * ``D``: ``@item``
+* ``F``: ``@bool``
 * ``G``: ``@group``
 * ``N``: ``@number``
 * ``O``: ``@object`` (automatically adds to the level)
 * ``S``: ``@string``
-* ``T``: ``@bool``
