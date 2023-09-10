@@ -1,39 +1,39 @@
 // Automatically generated helper functions
+_scgt_invert = (v) => match v.type {
+    == @number: -v,
+    == @bool: !v,
+    in [@string, @array]: v.reverse(),
+    else: v
+}
+
 _scgt_print = (v) {
-  $.print(v)
-  return v
+    $.print(v)
+    return v
+}
+
+_scgt_spawn = (v) => match v.type {
+    == @number: () { @group(v)! } (),
+    in [@group, @trigger_function]: () { v! } ()
+    else: v
 }
 
 // Initialize variables used
-let _scgt_loop_3 = null
-let _scgt_loop_5 = null
 let _scgt_loop_6 = null
 
-// $$L(LL`se"\"x`A
-$.print(_scgt_print(() {
-  let _scgt_loop_3 = []
-  while true {
-    // (LL`se"\"x`A
-    _scgt_loop_3.push(() {
-      // LL`se"\"x`A
-      return () {
-        let _scgt_loop_5 = []
+// E}$!$L(`se"\"x`5!
+on(touch(), !{
+    // $!$L(`se"\"x`5!
+    $.print(_scgt_invert(_scgt_print(() {
+        let _scgt_loop_6 = []
         while true {
-          // L`se"\"x`A
-          _scgt_loop_5.push(() {
-            let _scgt_loop_6 = []
-            while true {
-              // `se"\"x`
-              _scgt_print("se\"\\\"x")
-              // A
-              _scgt_loop_6.push([])
-            }
-            return _scgt_loop_6
-          } ())
+            // (`se"\"x`5!
+            _scgt_loop_6.push(() {
+                // `se"\"x`
+                $.print("se\"\\\"x")
+                // 5!
+                return _scgt_spawn(5)
+            } ())
         }
-        return _scgt_loop_5
-      } ()
-    } ())
-  }
-  return _scgt_loop_3
-} ()))
+        return _scgt_loop_6
+    } ())))
+})

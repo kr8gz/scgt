@@ -42,12 +42,7 @@
 * ``z`` - see notes for the entries that use this
 
 ## Statements
-* ``[ ] [ ]`` - ``v!`` calls a trigger function using helper function ``_scgt_trg_fn(v)``
-    * *TODO either this or ``a!b`` assignment has to change*
-* ``[ ] [$]`` - expression (at least one binary operator)
-* ``[ ] [?]`` - value
-    * print behavior depends on the value
-    * see [**Values and Prefixes**](#values-and-prefixes) and [**Postfixes**](#postfixes)
+no statements everything is just a value either implicitly printable or not
 
 ## Modifiers
 Only in this order
@@ -79,7 +74,7 @@ Only in this order
 * ``[ ] [$]`` - ``B`` equivalent to SPWN ``?b``
 * ``[ ] [$]`` - ``C`` equivalent to SPWN ``?c``
 * ``[ ] [$]`` - ``D`` equivalent to SPWN ``?i``
-* ``[ ] [ ]`` - ``Eb`` roughly equivalent to SPWN ``on(touch(), b)`` - see ``vEb`` entry [below](#postfixes)
+* ``[ ] [ ]`` - ``Ev`` roughly equivalent to SPWN ``on(touch(), v)`` - see ``vEv`` entry [below](#postfixes)
 * ``[ ] [$]`` - ``F`` equivalent to SPWN ``false``
 * ``[ ] [$]`` - ``G`` equivalent to SPWN ``?g``
 * ``[ ] [$]`` - ``I`` / ``J`` / ``K`` for loop variables
@@ -104,11 +99,12 @@ Only in this order
     * *TODO think of syntax for slice*
 * ``[;] [$]`` - ``v}v`` dictionarize / (multi-)zip?
     * *TODO for like matrix stuff? idk look at more stuff*
-* ``[;] [ ]`` - ``vEb`` roughly equivalent to SPWN ``on(v, b)``
+* ``[;] [ ]`` - ``vEv`` roughly equivalent to SPWN ``on(v, v)``
     * *TODO find out how event system works and which conversions should happen*
 * ``[;] [ ]`` - ``vIb`` / ``vJb`` / ``vKb`` to start for loop with corresponding variable using helper function ``_scgt_iter(v)``
 * ``[;] [ ]`` - ``vLb`` starts a while loop using helper function ``_scgt_bool(v)``
-* ``vM`` for macro call with no args
+* ``[ ] [ ]`` - ``vM`` calls stuff using ``_scgt_call(v)``
+    * macro with no args, trigger functions, treat number or group as trigger function etc
 * ``[;] [ ]`` - ``vWb`` starts a runtime while loop
 * ``[ ] [$]`` - any type(s) (except consecutive duplicates) - converts to types in order
     * see also [**Built-in types**](#built-in-types)

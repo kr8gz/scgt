@@ -24,13 +24,13 @@ struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    fn new(source: &'a str) -> Self {
+    fn new(source: &'a str, indent_size: usize) -> Self {
         Self {
             helper_functions: BTreeSet::new(),
             variables: BTreeSet::new(),
             source,
 
-            indent_size: 2,
+            indent_size,
 
             levels: Vec::new(),
         }
@@ -76,8 +76,8 @@ impl SpwnCode {
     }
 }
 
-pub fn parse(code: &str) -> ParseResult<String, Err<'_>> {
-    let mut state = State::new(code);
+pub fn parse(code: &str, indent_size: usize) -> ParseResult<String, Err<'_>> {
+    let mut state = State::new(code, indent_size);
     parser().parse_with_state(code, &mut state)
 }
 
@@ -186,6 +186,14 @@ fn parser<'a>() -> parser_type!('a, String) {
                     format!("{helper}({code})")
                 });
 
+            let trigger_function = block.clone()
+                .delimited_by(just('}'), closing)
+                .map_with_state(|stmts, _, state: &mut State| {
+                    // TODO check back here when `-> return`
+                    let code = format_stmts(stmts, state, false, "");
+                    format!("!{{\n{code}\n}}")
+                });
+
             let hardcoded = select! {
                 'A' => "[]",
                 'B' => "?b",
@@ -199,17 +207,25 @@ fn parser<'a>() -> parser_type!('a, String) {
             }
             .map(String::from);
 
-            let implicit_print_values = set_stmt(
-                choice((
-                    int, float,
-                    char_literal, string,
-                    value_ident, type_indicator,
-                    inner_block,
-                    invert,
-                    hardcoded,
-                )),
-                Some(false)
-            )
+            let implicit_print_values = choice((
+                set_stmt(
+                    choice((
+                        int, float,
+                        char_literal, string,
+                        value_ident, type_indicator,
+                        inner_block,
+                        invert,
+                        hardcoded,
+                    )),
+                    Some(false)
+                ),
+                set_stmt(
+                    choice((
+                        trigger_function,
+                    )),
+                    Some(true)
+                )
+            ))
             .map_with_span(SpwnCode::implicit_print);
 
             let explicit_print = just('$')
@@ -223,6 +239,12 @@ fn parser<'a>() -> parser_type!('a, String) {
                     }
                 });
 
+            let on_touch = expression.clone()
+                .delimited_by(just('E'), closing)
+                .map(|SpwnCode { code, .. }| {
+                    format!("on(touch(), {code})")
+                });
+
             let infinite_loop = block.clone()
                 .delimited_by(just('L'), closing)
                 .map_with_state(|stmts, _, state| {
@@ -231,6 +253,7 @@ fn parser<'a>() -> parser_type!('a, String) {
 
             let explicit_print_values = choice((
                 explicit_print, // set_stmt is called at definition
+                set_stmt(on_touch, Some(false)),
                 set_stmt(infinite_loop, None),
             ))
             .map_with_span(SpwnCode::explicit_print);
@@ -335,14 +358,7 @@ fn format_stmts(
                 let code = if i < last_index || state.is_stmt() {
                     match print {
                         PrintBehavior::Explicit => code,
-                        PrintBehavior::Implicit => {
-                            if state.is_stmt() {
-                                format!("$.print({code})")
-                            } else {
-                                let helper = state.add_helper(HelperFunction::Print);
-                                format!("{helper}({code})")
-                            }
-                        }
+                        PrintBehavior::Implicit => format!("$.print({code})"),
                     }
                 } else {
                     return_fmt.replace('#', &code)
