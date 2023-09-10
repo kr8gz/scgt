@@ -1,36 +1,42 @@
 // Automatically generated helper functions
-_scgt_mul = (n: @number, v) => match v.type {
-    in [@array, @number, @string]: n * v,
-    in [@group, @color, @item, @block]: v.type(n * @number(v)),
-    == @bool: n * @number(v)
-    else: v
-}
+_scgt_get = (v) => v // to counteract the clone bug in SPWN v0.8
 
 // Initialize variables used
-let _scgt_loop_3 = null
+let _scgt_loop_2 = null
 let _scgt_loop_4 = null
+let _scgt_loop_5 = null
+let x = null
 
-// L(L$TL1F
-while true {
-    // (L$TL1F
-    $.print(() {
-        // L$TL1F
-        return () {
-            let _scgt_loop_3 = []
-            while true {
-                // $T
-                $.print(true)
-                // L1F
-                _scgt_loop_3.push(() {
+// aXL(L$TLxF
+a = (x) {
+    // L(L$TLxF
+    return () {
+        let _scgt_loop_2 = []
+        while true {
+            // (L$TLxF
+            _scgt_loop_2.push(() {
+                // L$TLxF
+                return () {
                     let _scgt_loop_4 = []
                     while true {
-                        // 1F
-                        _scgt_loop_4.push(_scgt_mul(1, false))
+                        // $T
+                        $.print(true)
+                        // LxF
+                        _scgt_loop_4.push(() {
+                            let _scgt_loop_5 = []
+                            while true {
+                                // x
+                                $.print(_scgt_get(x))
+                                // F
+                                _scgt_loop_5.push(false)
+                            }
+                            return _scgt_loop_5
+                        } ())
                     }
                     return _scgt_loop_4
-                } ())
-            }
-            return _scgt_loop_3
-        } ()
-    } ())
+                } ()
+            } ())
+        }
+        return _scgt_loop_2
+    } ()
 }

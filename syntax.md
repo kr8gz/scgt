@@ -14,35 +14,32 @@
 * ``b`` - block
     * ( ``s`` )*
 * ``d`` - dictionary
-    * ``m`` ( [ { ( ``i`` | ``v`` ) ``:`` }+ ``v`` | { ``i`` | ``v`` } ``v`` | ``v`` { ``,`` }? ] )*
-    * with single character modifier: ``m`` ( [ { ``j`` | ``w`` }+ ``:v`` | ``w`` { ``,`` }? ] )*
+    * ``m`` ( [ { ``i:`` }+ ``e`` | ``i`` { ``e`` | ``,`` }? )*
+    * with single character modifier: ``m`` ( [ { ``j`` }+ ``:e`` | ``j`` { ``,`` }? ] )*
     * modifiers only apply to values, not keys
-    * chain like ``v:v:v`` or ``cc:v`` to assign all keys in between to the value after the last ``:``
+    * chain like ``i:i:v`` or ``jj:v`` to assign all keys in between to the value after the last ``:``
     * only idents in dictionaries and only numbers in objects (no value keys)
-    * ``,`` after a key to add it as a key-value pair (``v,`` → ``v: v``)
+    * ``,`` after a key to add it as a key-value pair (``i,`` → ``i: i``)
         * should also work with values in ``Od``
+        * for ``Od`` the keys are ``v`` or ``w`` instead of ``i`` and ``j``
         * also works like this if the identifier is the last one in the dict
         * also works like this for all keys with no value specified in for character key list
+* ``e`` - expression
+    * expressions are just values chained with operators
+    * expressions may have one trailing space to separate them from the next one
 * ``i`` - identifier
     * matches ``[a-z]+``
     * identifiers may have one trailing space to separate them from the next one
 * ``j`` - identifier limited to one character - see ``i`` above
 * ``l`` - list
-    * ``m`` ( ``v`` )*
+    * ``m`` ( ``e`` )*
 * ``m`` - optional modifiers - see [**Modifiers**](#modifiers)
-* ``s`` - statement - see [**Statements**](#statements)
-* ``v`` - expression
-    * expressions are just values chained with operators
+* ``v`` - value
     * see [**Values and Prefixes**](#values-and-prefixes) and [**Postfixes**](#postfixes)
-    * expressions may have one trailing space to separate them from the next one
-        * *TODO check_with_state to check if outermost expression idfk*
 * ``w`` - value limited to one character - see ``v`` above
 * ``x`` - any character
 * ``…`` - any sequence of characters (until closed accordingly)
 * ``z`` - see notes for the entries that use this
-
-## Statements
-no statements everything is just a value either implicitly printable or not
 
 ## Modifiers
 Only in this order
@@ -64,7 +61,7 @@ Only in this order
     * this means that it *must* be closed before anything else
 * ``[;] [$]`` - ``(b`` evaluates a block as a value
 * ``[;] [$]`` - ``)z;b`` defines a macro
-    * ``z``: ``m`` ( ``imv`` [ ``,`` ]? )*
+    * ``z``: ``m`` ( ``ime`` [ ``,`` ]? )*
     * ``,`` needed to separate macro argument definitions because of possible default values
         * ``␣`` or no delimiter also works when unambiguous
 * ``[;] [$]`` - ``[l`` defines array
@@ -88,27 +85,29 @@ Only in this order
 * ``[;] [$]`` - ``Xb`` equivalent to ``)x;b``
 
 ## Postfixes
-* ``[;] [ ]`` - ``i!v`` assigns a value and returns it
+* ``[;] [ ]`` - ``i!e`` assigns a value and returns it
 * ``[;] [ ]`` - ``iTd`` declares a type ``@i`` with the members in ``d``
-* ``[ ] [ ]`` - ``v?vv`` for ternary operator
-* ``[ ] [ ]`` - ``vXv`` equivalent to ``v?vN``
+* ``[ ] [ ]`` - ``e?ee`` or ``v'ee`` for ternary operator
+* ``[ ] [ ]`` - ``eXe`` equivalent to ``e?e N``
+    * *TODO any syntax for ``v'e N``?*
 * ``[ ] [$]`` - ``v.i`` for accessing children
 * ``[;] [ ]`` - ``v(z`` calls a macro
-    * ``z``: ``m`` ( ( ``i:`` )? ``v`` )*
-    * ``i:v`` when calling to specify the arg that gets the value
-* ``[;] [ ]`` - ``v)z;b`` shortcut for named macro definition
+    * ``z``: ``m`` ( ( ``i:`` )? ``e`` )*
+    * ``i:e`` when calling to specify the arg that gets the value
+* ``[;] [ ]`` - ``i)z;b`` shortcut for named macro definition
     * see macro definition entry [above](#values-and-prefixes)
 * ``[;] [$]`` - ``v]z`` for indexing/slicing
     * *TODO think of syntax for slice*
 * ``[;] [$]`` - ``v}v`` dictionarize / (multi-)zip?
     * *TODO for like matrix stuff? idk look at more stuff*
-* ``[;] [ ]`` - ``vEv`` roughly equivalent to SPWN ``on(v, v)``
+* ``[;] [ ]`` - ``eEe`` roughly equivalent to SPWN ``on(e, e)``
     * *TODO find out how event system works and which conversions should happen*
-* ``[;] [ ]`` - ``vIb`` / ``vJb`` / ``vKb`` to start for loop with corresponding variable using helper function ``_scgt_iter(v)``
-* ``[;] [ ]`` - ``vLb`` starts a while loop using helper function ``_scgt_bool(v)``
+* ``[;] [ ]`` - ``eIb`` / ``eJb`` / ``eKb`` to start for loop with corresponding variable using helper function ``_scgt_iter(e)``
+* ``[;] [ ]`` - ``eLb`` starts a while loop using helper function ``_scgt_bool(e)``
 * ``[ ] [ ]`` - ``vM`` calls stuff using ``_scgt_call(v)``
     * macro with no args, trigger functions, treat number or group as trigger function etc
-* ``[;] [ ]`` - ``vWb`` starts a runtime while loop
+* ``[;] [ ]`` - ``eWb`` starts a runtime while loop
+* ``[;] [ ]`` - ``iXb`` equivalent to ``i!Xb``
 * ``[ ] [$]`` - any type(s) (except consecutive duplicates) - converts to types in order
     * see also [**Built-in types**](#built-in-types)
 * operators
