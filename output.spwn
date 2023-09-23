@@ -1,7 +1,76 @@
-// Initialize variables used
-let a = null
+// Automatically generated helper functions
+_scgt_invert = (v) => match v.type {
+    == @number: -v,
+    == @bool: !v,
+    in [@string, @array]: v.reverse(),
+    else: v
+}
 
+_scgt_set = (&t, v) {
+    t = v
+    return v
+}
+
+// Initialize variables used
+let _scgt_loop_1 = null
+let _scgt_loop_3 = null
+let _scgt_loop_5 = null
+let _scgt_loop_6 = null
+let a = null
+let x = null
+
+// a.b!L
 // a.b!L;
+// a.b!L;3
+// a.b!XL(L$TLxF
 a.b = () {
-    while true { }
+    let _scgt_loop_1 = []
+    while true {
+        // a.b!L;
+        a.b = () {
+            while true { }
+        } ()
+        // a.b
+        $.print(a.b)
+        // !L;
+        $.print(_scgt_invert(() {
+            while true { }
+        } ()))
+        // 3
+        $.print(3)
+        // a.b!XL(L$TLxF
+        _scgt_loop_1.push(_scgt_set(a.b, (x) {
+            // L(L$TLxF
+            return () {
+                let _scgt_loop_3 = []
+                while true {
+                    // (L$TLxF
+                    _scgt_loop_3.push(() {
+                        // L$TLxF
+                        return () {
+                            let _scgt_loop_5 = []
+                            while true {
+                                // $T
+                                $.print(true)
+                                // LxF
+                                _scgt_loop_5.push(() {
+                                    let _scgt_loop_6 = []
+                                    while true {
+                                        // x
+                                        x
+                                        // F
+                                        _scgt_loop_6.push(false)
+                                    }
+                                    return _scgt_loop_6
+                                } ())
+                            }
+                            return _scgt_loop_5
+                        } ()
+                    } ())
+                }
+                return _scgt_loop_3
+            } ()
+        }))
+    }
+    return _scgt_loop_1
 } ()

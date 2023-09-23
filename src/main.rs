@@ -2,9 +2,9 @@ use std::fs;
 
 use clap::Parser;
 
-mod error;
-mod parser;
-mod helpers;
+mod lex;
+mod parse;
+mod util;
 
 #[derive(Parser, Debug)]
 #[command(author = "kr8gz", verbatim_doc_comment)]
@@ -20,15 +20,17 @@ struct Args {
 }
 
 fn main() {
-    let args = Args::parse();
-    let code = fs::read_to_string(args.file)
-        .unwrap_or_else(|err| error::simple(err))
-        .replace("\r\n", "\n");
+    // TODO uncomment when finish RWRT
 
-    let result = parser::parse(&code, args.indent_size);
-    let (output, errors) = result.into_output_errors();
-    dbg!(errors);
-    if let Some(output) = output {
-        fs::write("output.spwn", output).unwrap_or_else(|err| error::simple(err));
-    }
+    // let args = Args::parse();
+    // let code = fs::read_to_string(args.file)
+    //     .unwrap_or_else(|err| util::errors::simple(err))
+    //     .replace("\r\n", "\n");
+
+    // let result = parser::parse(&code, args.indent_size);
+    // let (output, errors) = result.into_output_errors();
+    // dbg!(errors);
+    // if let Some(output) = output {
+    //     fs::write("output.spwn", output).unwrap_or_else(|err| util::errors::simple(err));
+    // }
 }

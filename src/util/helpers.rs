@@ -17,7 +17,7 @@ macro_rules! helper_functions {
         
             pub fn spwn_impl(&self) -> &'static str {
                 match self {
-                    $( Self::$name => include_str!(concat!("spwn/", $spwn_name, ".spwn")) ),*
+                    $( Self::$name => include_str!(concat!("../spwn/", $spwn_name, ".spwn")) ),*
                 }
             }
         }
